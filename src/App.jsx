@@ -1116,6 +1116,291 @@ function Pv2SectBox({title,color="#c8952a",children}){
 }
 
 // ─── SETTINGS PAGE ───────────────────────────────────────────────────────────
+// ── PRT Reference Library — embedded panel (shared Supabase table) ─────────────
+const REF_SB_BASE = "https://uvojezuorjgqzmhhgluu.supabase.co/rest/v1/prt_references";
+const REF_HDR = {
+  apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2b2plenVvcmpncXptaGhnbHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMTQ3MTcsImV4cCI6MjA4Njg5MDcxN30.1irtkNYnTJbvg8VJMQh-VpByqpmIRiASwR1qTOZ6RiQ",
+  Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2b2plenVvcmpncXptaGhnbHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMTQ3MTcsImV4cCI6MjA4Njg5MDcxN30.1irtkNYnTJbvg8VJMQh-VpByqpmIRiASwR1qTOZ6RiQ",
+  "Content-Type": "application/json",
+  Prefer: "return=representation",
+};
+const REF_CAT_COLORS = {
+  "RCCS / Carbon":"#7aad6e","PRT Canonical":"#c8952a","Real Estate / Lots":"#9f6a4a",
+  "CLT / Affordable Housing":"#4a8f9f","Hospitality / Hub":"#c8952a","Energy / MCU":"#a09f6a",
+  "Agriculture / Land":"#7aad6e","Municipal Intelligence":"#4a8f9f","Prairie Vista":"#c8952a",
+  "Finance / Investment":"#a09f6a","Legal / Compliance":"#9f6a4a","General":"#6a7a62",
+};
+const REF_CATS = Object.keys(REF_CAT_COLORS);
+const REF_EMPTY = { title:"", ref_date:"", source_link:"", category:"General", content:"", tags:[], project:"prairie-vista" };
+
+function PvRefPanel() {
+  const [refs, setRefs]       = React.useState([]);
+  const [loading, setLoading] = React.useState(true);
+  const [open, setOpen]       = React.useState(false);
+  const [editing, setEditing] = React.useState(null);  // null | ref object | REF_EMPTY
+  const [preview, setPreview] = React.useState(false);
+  const [tagInput, setTagInput] = React.useState("");
+  const [flash, setFlash]     = React.useState(null);
+  const [expandedId, setExpandedId] = React.useState(null);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const r = await fetch(`${REF_SB_BASE}?select=*&order=category.asc,title.asc`, { headers: REF_HDR });
+      setRefs(await r.json());
+    } catch {}
+    setLoading(false);
+  };
+
+  React.useEffect(() => { if (open) load(); }, [open]);
+
+  const showFlash = (msg) => { setFlash(msg); setTimeout(()=>setFlash(null), 1800); };
+
+  const saveRef = async () => {
+    if (!editing?.title?.trim()) return;
+    const payload = {
+      title: editing.title.trim(),
+      ref_date: editing.ref_date || null,
+      source_link: editing.source_link?.trim() || null,
+      category: editing.category || "General",
+      content: editing.content || null,
+      tags: editing.tags?.length ? editing.tags : null,
+      project: editing.project || "prairie-vista",
+    };
+    try {
+      if (editing.id) {
+        await fetch(`${REF_SB_BASE}?id=eq.${editing.id}`, { method:"PATCH", headers:REF_HDR, body:JSON.stringify(payload) });
+      } else {
+        await fetch(REF_SB_BASE, { method:"POST", headers:REF_HDR, body:JSON.stringify(payload) });
+      }
+      setEditing(null); setPreview(false); setTagInput("");
+      await load(); showFlash("Saved ✓");
+    } catch { showFlash("Error saving"); }
+  };
+
+  const deleteRef = async (id) => {
+    if (!confirm("Delete this reference?")) return;
+    await fetch(`${REF_SB_BASE}?id=eq.${id}`, { method:"DELETE", headers:REF_HDR });
+    if (expandedId === id) setExpandedId(null);
+    await load(); showFlash("Deleted");
+  };
+
+  const setF = (k,v) => setEditing(p=>({...p,[k]:v}));
+  const addTag = () => {
+    const t = tagInput.trim().toLowerCase().replace(/\s+/g,"-");
+    if (t && !(editing.tags||[]).includes(t)) setF("tags",[...(editing.tags||[]),t]);
+    setTagInput("");
+  };
+
+  const inputSt = { width:"100%", background:"#1a2a18", border:"1px solid #2d4028", borderRadius:5,
+    color:"#c8b483", fontFamily:"'DM Mono',monospace", fontSize:11,
+    padding:"6px 9px", outline:"none", boxSizing:"border-box" };
+
+  const grouped = refs.reduce((acc, r) => {
+    (acc[r.category] = acc[r.category] || []).push(r); return acc;
+  }, {});
+
+  return (
+    <div style={{marginTop:28,borderTop:"1px solid #2d4028",paddingTop:20}}>
+      {/* Section header */}
+      <button onClick={()=>setOpen(!open)}
+        style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"transparent",
+          border:"none",cursor:"pointer",marginBottom:open?16:0}}>
+        <div style={{flex:1,textAlign:"left"}}>
+          <div style={{fontSize:9,color:"#4a8f9f",fontWeight:700,letterSpacing:"0.14em",
+            textTransform:"uppercase"}}>📚 Reference Library</div>
+          <div style={{fontSize:12,color:"#c8b483",marginTop:2}}>
+            Source citations, research notes &amp; canonical references — shared across all PRT projects
+          </div>
+        </div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          {flash && <span style={{fontSize:10,color:"#7aad6e",fontFamily:"'DM Mono',monospace"}}>● {flash}</span>}
+          {!loading && open && <span style={{fontSize:10,color:"#6a7a62"}}>{refs.length} refs</span>}
+          <a href="https://prt-reflib.vercel.app" target="_blank" rel="noopener"
+            onClick={e=>e.stopPropagation()}
+            style={{fontSize:10,color:"#4a8f9f",textDecoration:"none",
+              border:"1px solid #4a8f9f40",borderRadius:4,padding:"3px 8px"}}>
+            🌐 Full Library →
+          </a>
+          <span style={{fontSize:11,color:"#6a7a62"}}>{open?"▲":"▼"}</span>
+        </div>
+      </button>
+
+      {open && (
+        <div>
+          {/* Add new / toolbar */}
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{fontSize:10,color:"#6a7a62"}}>
+              Same database as{" "}
+              <a href="https://prt-reflib.vercel.app" target="_blank" rel="noopener"
+                style={{color:"#4a8f9f"}}>prt-reflib.vercel.app</a>
+              {" "}— add here or there, appears everywhere.
+            </div>
+            <button onClick={()=>{setEditing({...REF_EMPTY});setPreview(false);}}
+              style={{padding:"6px 14px",borderRadius:6,border:"1px solid #4a8f9f",
+                background:"#4a8f9f20",color:"#4a8f9f",cursor:"pointer",fontWeight:700,fontSize:11}}>
+              + Add Reference
+            </button>
+          </div>
+
+          {/* Inline editor */}
+          {editing !== null && (
+            <div style={{background:"#162114",border:"1px solid #c8952a40",borderRadius:9,
+              padding:"16px 18px",marginBottom:18}}>
+              <div style={{fontSize:10,color:"#c8952a",fontWeight:700,letterSpacing:"0.1em",
+                textTransform:"uppercase",marginBottom:12}}>
+                {editing.id ? "Edit Reference" : "New Reference"}
+              </div>
+              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 14px"}}>
+                <div style={{gridColumn:"1/-1",marginBottom:10}}>
+                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:3}}>Title *</div>
+                  <input value={editing.title} onChange={e=>setF("title",e.target.value)}
+                    placeholder="e.g. Alberta TIER Offset Market Price 2025" style={inputSt}/>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:3}}>Date</div>
+                  <input type="date" value={editing.ref_date||""} onChange={e=>setF("ref_date",e.target.value)} style={inputSt}/>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:3}}>Category</div>
+                  <select value={editing.category} onChange={e=>setF("category",e.target.value)}
+                    style={{...inputSt,cursor:"pointer"}}>
+                    {REF_CATS.map(c=><option key={c}>{c}</option>)}
+                  </select>
+                </div>
+                <div style={{marginBottom:10}}>
+                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:3}}>Project Scope</div>
+                  <select value={editing.project} onChange={e=>setF("project",e.target.value)}
+                    style={{...inputSt,cursor:"pointer"}}>
+                    {["global","prairie-vista","dos-pueblos"].map(p=><option key={p}>{p}</option>)}
+                  </select>
+                </div>
+                <div style={{gridColumn:"1/-1",marginBottom:10}}>
+                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:3}}>Source Link (optional)</div>
+                  <input value={editing.source_link||""} onChange={e=>setF("source_link",e.target.value)}
+                    placeholder="https://..." style={inputSt}/>
+                </div>
+                <div style={{gridColumn:"1/-1",marginBottom:10}}>
+                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:4}}>Tags</div>
+                  <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:5}}>
+                    {(editing.tags||[]).map(t=>(
+                      <span key={t} style={{display:"inline-flex",alignItems:"center",gap:3,
+                        background:"#2d4028",borderRadius:10,padding:"2px 7px",fontSize:9,color:"#8a9080"}}>
+                        {t}
+                        <button onClick={()=>setF("tags",(editing.tags||[]).filter(x=>x!==t))}
+                          style={{background:"none",border:"none",color:"#6a7a62",cursor:"pointer",fontSize:10,padding:0}}>×</button>
+                      </span>
+                    ))}
+                  </div>
+                  <div style={{display:"flex",gap:6}}>
+                    <input value={tagInput} onChange={e=>setTagInput(e.target.value)}
+                      onKeyDown={e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();addTag();}}}
+                      placeholder="tag, press Enter" style={{...inputSt,flex:1}}/>
+                    <button onClick={addTag} style={{padding:"5px 10px",borderRadius:4,
+                      border:"1px solid #2d4028",background:"#2d4028",color:"#8a9080",cursor:"pointer",fontSize:10}}>+</button>
+                  </div>
+                </div>
+                <div style={{gridColumn:"1/-1"}}>
+                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
+                    <div style={{fontSize:9,color:"#6a7a62"}}>Content (Markdown)</div>
+                    <button onClick={()=>setPreview(!preview)}
+                      style={{padding:"2px 9px",borderRadius:4,
+                        border:`1px solid ${preview?"#c8952a":"#2d4028"}`,
+                        background:preview?"#c8952a20":"transparent",
+                        color:preview?"#c8952a":"#6a7a62",cursor:"pointer",fontSize:9}}>
+                      {preview?"✎ Edit":"👁 Preview"}
+                    </button>
+                  </div>
+                  {preview
+                    ? <div style={{background:"#1a2a18",border:"1px solid #2d4028",borderRadius:6,
+                        padding:"12px 14px",minHeight:120,maxHeight:300,overflowY:"auto",fontSize:12,
+                        color:"#c8b483",lineHeight:1.7,whiteSpace:"pre-wrap"}}>
+                        {editing.content||<span style={{color:"#6a7a62",fontStyle:"italic"}}>Nothing to preview.</span>}
+                      </div>
+                    : <textarea value={editing.content||""} onChange={e=>setF("content",e.target.value)}
+                        rows={7} placeholder={"## Title\n\nNotes, data points, sources...\n\n### Key Facts\n- Fact one"}
+                        style={{...inputSt,resize:"vertical",minHeight:120,lineHeight:1.6}}/>
+                  }
+                </div>
+              </div>
+              <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:12}}>
+                <button onClick={()=>{setEditing(null);setPreview(false);setTagInput("");}}
+                  style={{padding:"6px 14px",borderRadius:5,border:"1px solid #2d4028",
+                    background:"transparent",color:"#6a7a62",cursor:"pointer",fontSize:11}}>Cancel</button>
+                <button onClick={saveRef} disabled={!editing.title?.trim()}
+                  style={{padding:"6px 16px",borderRadius:5,border:"1px solid #c8952a",
+                    background:"#c8952a20",color:"#c8952a",cursor:"pointer",fontWeight:700,fontSize:11}}>
+                  Save Reference
+                </button>
+              </div>
+            </div>
+          )}
+
+          {/* Reference list grouped by category */}
+          {loading
+            ? <div style={{textAlign:"center",padding:20,color:"#6a7a62",fontSize:12}}>Loading references…</div>
+            : Object.keys(grouped).sort().map(cat => (
+              <div key={cat} style={{marginBottom:16}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:7,
+                  borderBottom:"1px solid #1e2e1c",paddingBottom:5}}>
+                  <span style={{background:`${REF_CAT_COLORS[cat]||"#6a7a62"}20`,
+                    border:`1px solid ${REF_CAT_COLORS[cat]||"#6a7a62"}50`,borderRadius:4,
+                    padding:"2px 7px",fontSize:9,color:REF_CAT_COLORS[cat]||"#6a7a62",
+                    fontWeight:700,letterSpacing:"0.06em"}}>{cat}</span>
+                  <span style={{fontSize:9,color:"#6a7a62"}}>{grouped[cat].length}</span>
+                </div>
+                {grouped[cat].map(r => (
+                  <div key={r.id} style={{background:"#1c2a1a",border:"1px solid #2d4028",
+                    borderLeft:`3px solid ${REF_CAT_COLORS[r.category]||"#6a7a62"}`,
+                    borderRadius:7,marginBottom:6,overflow:"hidden"}}>
+                    {/* Row header */}
+                    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",cursor:"pointer"}}
+                      onClick={()=>setExpandedId(expandedId===r.id?null:r.id)}>
+                      <div style={{flex:1}}>
+                        <div style={{fontSize:12,fontWeight:700,color:"#c8b483"}}>{r.title}</div>
+                        <div style={{display:"flex",gap:8,marginTop:3,alignItems:"center"}}>
+                          {r.ref_date&&<span style={{fontSize:9,color:"#6a7a62",fontFamily:"'DM Mono',monospace"}}>📅 {r.ref_date}</span>}
+                          {r.source_link&&<a href={r.source_link} target="_blank" rel="noopener"
+                            onClick={e=>e.stopPropagation()}
+                            style={{fontSize:9,color:"#4a8f9f",textDecoration:"none"}}>🔗 source</a>}
+                          <span style={{fontSize:9,color:r.project==="global"?"#c8952a":r.project==="prairie-vista"?"#7aad6e":"#4a8f9f"}}>
+                            {r.project==="global"?"🌐":"🌾"} {r.project}
+                          </span>
+                          {r.tags?.map(t=>(
+                            <span key={t} style={{background:"#2d4028",borderRadius:8,
+                              padding:"1px 6px",fontSize:9,color:"#6a7a62"}}>{t}</span>
+                          ))}
+                        </div>
+                      </div>
+                      <div style={{display:"flex",gap:5,flexShrink:0}}>
+                        <button onClick={e=>{e.stopPropagation();setEditing({...r});setPreview(false);}}
+                          style={{background:"#2d4028",border:"none",borderRadius:3,
+                            color:"#8a9080",cursor:"pointer",padding:"3px 7px",fontSize:9}}>Edit</button>
+                        <button onClick={e=>{e.stopPropagation();deleteRef(r.id);}}
+                          style={{background:"transparent",border:"1px solid #c0392b30",borderRadius:3,
+                            color:"#c0392b",cursor:"pointer",padding:"3px 7px",fontSize:9}}>✕</button>
+                        <span style={{fontSize:10,color:"#6a7a62"}}>{expandedId===r.id?"▲":"▼"}</span>
+                      </div>
+                    </div>
+                    {/* Expanded content */}
+                    {expandedId===r.id && r.content && (
+                      <div style={{borderTop:"1px solid #2d4028",padding:"12px 14px",
+                        background:"#162114",fontSize:11,color:"#c8b483",lineHeight:1.7,
+                        whiteSpace:"pre-wrap",maxHeight:300,overflowY:"auto"}}>
+                        {r.content}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            ))
+          }
+        </div>
+      )}
+    </div>
+  );
+}
+
 function Pv2Settings({ S, setS, onClose }) {
   const set = (k,v) => setS(p=>({...p,[k]:v}));
   return(
@@ -1283,6 +1568,9 @@ function Pv2Settings({ S, setS, onClose }) {
           </Pv2SectBox>
         </div>
       </div>
+
+      {/* ── References Panel ── */}
+      <PvRefPanel/>
 
       <div style={{borderTop:"1px solid #2d4028",marginTop:20,paddingTop:14,
         display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
