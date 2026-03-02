@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 
 const palette = {
   bg: "#0f1a0e",
@@ -742,6 +742,426 @@ const ZONE_LABELS = {
   road: "Streets / Infrastructure",
 };
 
+
+// ════════════════════════════════════════════════════════════════════════════
+// FINANCE MODEL — Prairie Vista Estates · Gate-Triggered Phased ROI
+// ════════════════════════════════════════════════════════════════════════════
+
+const SUPABASE_URL = "https://uvojezuorjgqzmhhgluu.supabase.co";
+const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2b2plenVvcmpncXptaGhnbHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMTQ3MTcsImV4cCI6MjA4Njg5MDcxN30.1irtkNYnTJbvg8VJMQh-VpByqpmIRiASwR1qTOZ6RiQ";
+const SB_HDR = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
+async function sbGet(key, fb) {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/prt_storage?key=eq.${encodeURIComponent(key)}&select=value`, { headers: SB_HDR });
+    const d = await r.json();
+    if (Array.isArray(d) && d[0]?.value) return JSON.parse(d[0].value);
+  } catch {}
+  return fb;
+}
+async function sbSet(key, val) {
+  try {
+    await fetch(`${SUPABASE_URL}/rest/v1/prt_storage`, {
+      method: "POST", headers: { ...SB_HDR, Prefer: "resolution=merge-duplicates" },
+      body: JSON.stringify({ key, value: JSON.stringify(val), updated_at: new Date().toISOString() }),
+    });
+  } catch {}
+}
+
+const fM = (v, d = 1) => v === 0 ? "—" : `$${(v / 1e6).toFixed(d)}M`;
+const fK = (v) => `$${(v / 1e3).toFixed(0)}K`;
+const fD = (v) => Math.abs(v) >= 1e6 ? fM(v) : Math.abs(v) >= 1e3 ? fK(v) : `$${Number(v).toFixed(0)}`;
+const fP = (v) => `${(v * 100).toFixed(1)}%`;
+const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+
+// Revenue streams keyed by phase
+const PV_STREAMS = [
+  // Phase 0 — no revenue, only costs
+  // Phase 1A — Stewardship + Hub (conditional)
+  { id: "hub_hospitality",  phase: "p1a", name: "Hospitality Hub — Agri-tourism & Glamping", icon: "🏕", yr1Lo: 0, yr1Hi: 0, yr3Lo: 180e3, yr3Hi: 320e3, conditional: true, condNote: "Gate: Phase 0 Feasibility Study confirms proceed", capDelta: { Natural: 1, Human: 2, Social: 2, Manufactured: 1, Financial: 1 }, on: false },
+  { id: "prairie_exp",      phase: "p1a", name: "Prairie Experience Centre — Events & Programs", icon: "🌾", yr1Lo: 0, yr1Hi: 0, yr3Lo: 60e3, yr3Hi: 120e3, conditional: true, condNote: "Gate: Hub construction confirmed", capDelta: { Natural: 0, Human: 2, Social: 3, Manufactured: 0, Financial: 0 }, on: false },
+  { id: "rccs_ncu_p1",      phase: "p1a", name: "RCCS Natural Capital Credits (NCU) — Prairie Restoration", icon: "🌿", yr1Lo: 0, yr1Hi: 0, yr3Lo: 40e3, yr3Hi: 90e3, capDelta: { Natural: 3, Human: 0, Social: 0, Manufactured: 0, Financial: 1 }, on: true },
+  { id: "rccs_scu_p1",      phase: "p1a", name: "RCCS Social Capital Credits (SCU) — Community Baseline", icon: "🤝", yr1Lo: 0, yr1Hi: 0, yr3Lo: 15e3, yr3Hi: 35e3, capDelta: { Natural: 0, Human: 0, Social: 2, Manufactured: 0, Financial: 0 }, on: true },
+  // Phase 1B — Servicing Spine (concurrent with 1A, no direct revenue)
+  // Phase 2 — Living Neighbourhoods North
+  { id: "lot_sales_p2",     phase: "p2",  name: "Residential Lot Sales — Phase 2 North (68 lots)", icon: "🏘", yr1Lo: 0, yr1Hi: 0, yr3Lo: 1200e3, yr3Hi: 2200e3, oneTime: false, capDelta: { Natural: 0, Human: 1, Social: 1, Manufactured: 2, Financial: 3 }, on: true },
+  { id: "land_lease_p2",    phase: "p2",  name: "CLT Land-Lease — Affordable & Workforce Units", icon: "🔑", yr1Lo: 0, yr1Hi: 0, yr3Lo: 85e3, yr3Hi: 160e3, capDelta: { Natural: 0, Human: 2, Social: 2, Manufactured: 0, Financial: 1 }, on: true },
+  { id: "energy_coop",      phase: "p2",  name: "Community Energy Cooperative — Solar + Geothermal", icon: "⚡", yr1Lo: 0, yr1Hi: 0, yr3Lo: 45e3, yr3Hi: 95e3, capDelta: { Natural: 1, Human: 0, Social: 1, Manufactured: 2, Financial: 1 }, on: true },
+  { id: "rccs_ncu_p2",      phase: "p2",  name: "RCCS Natural Capital Credits (NCU) — Wetland + Carbon", icon: "🌊", yr1Lo: 0, yr1Hi: 0, yr3Lo: 80e3, yr3Hi: 160e3, capDelta: { Natural: 3, Human: 0, Social: 0, Manufactured: 0, Financial: 1 }, on: true },
+  { id: "rccs_hcu",         phase: "p2",  name: "RCCS Human Capital Credits (HCU)", icon: "🧠", yr1Lo: 0, yr1Hi: 0, yr3Lo: 20e3, yr3Hi: 50e3, capDelta: { Natural: 0, Human: 3, Social: 0, Manufactured: 0, Financial: 0 }, on: true },
+  { id: "market_hall",      phase: "p2",  name: "Market Hall & Community Kitchen — Vendor Fees", icon: "🍽", yr1Lo: 0, yr1Hi: 0, yr3Lo: 30e3, yr3Hi: 65e3, capDelta: { Natural: 0, Human: 1, Social: 2, Manufactured: 0, Financial: 0 }, on: true },
+  // Phase 3 — Living Neighbourhoods South
+  { id: "lot_sales_p3",     phase: "p3",  name: "Residential Lot Sales — Phase 3 South (65 lots)", icon: "🏡", yr1Lo: 0, yr1Hi: 0, yr3Lo: 1100e3, yr3Hi: 2000e3, capDelta: { Natural: 0, Human: 1, Social: 1, Manufactured: 2, Financial: 3 }, on: true },
+  { id: "land_lease_p3",    phase: "p3",  name: "CLT Land-Lease — Phase 3 Units", icon: "🔑", yr1Lo: 0, yr1Hi: 0, yr3Lo: 80e3, yr3Hi: 150e3, capDelta: { Natural: 0, Human: 1, Social: 2, Manufactured: 0, Financial: 1 }, on: true },
+  { id: "rccs_full",        phase: "p3",  name: "RCCS Full Portfolio — All Five Capital Credits", icon: "📊", yr1Lo: 0, yr1Hi: 0, yr3Lo: 120e3, yr3Hi: 280e3, capDelta: { Natural: 2, Human: 2, Social: 2, Manufactured: 1, Financial: 2 }, on: true },
+  { id: "futvrville_lic",   phase: "p3",  name: "FuturVille Platform Licensing — Village #1 IP", icon: "🌐", yr1Lo: 0, yr1Hi: 0, yr3Lo: 40e3, yr3Hi: 120e3, capDelta: { Natural: 0, Human: 1, Social: 1, Manufactured: 0, Financial: 2 }, on: false },
+  { id: "inav_reporting",   phase: "p3",  name: "INAV Impact Asset — CLT Balance Sheet Recognition", icon: "🏦", yr1Lo: 0, yr1Hi: 0, yr3Lo: 0, yr3Hi: 0, capDelta: { Natural: 1, Human: 1, Social: 1, Manufactured: 1, Financial: 2 }, on: true, noteText: "Non-cash — ecological appreciation recognized on CLT balance sheet" },
+];
+
+const PV_PHASES = {
+  p0:  { label: "Phase 0", sublabel: "Alignment & Feasibility", color: "#c8952a", desc: "Story of Place · FPIC · CLT formation · Feasibility Studies · RCCS baselines. No construction — 100% foundation work." },
+  p1a: { label: "Phase 1A", sublabel: "Stewardship + Hub (conditional)", color: "#7aad6e", desc: "Ecological restoration begins. RCCS credits start accruing. Hub activation conditional on Phase 0 Feasibility Study." },
+  p2:  { label: "Phase 2", sublabel: "Living Neighbourhoods North", color: "#4a8f9f", desc: "First residential lots. CLT land-lease affordable units. Community energy coop. Market Hall operational." },
+  p3:  { label: "Phase 3", sublabel: "Living Neighbourhoods South", color: "#9f6a4a", desc: "Full buildout. Complete RCCS portfolio issuing. INAV reporting begins. FuturVille replication potential." },
+};
+
+const PV_CAPITALS = [
+  { key: "Natural",      icon: "🌿", color: "#7aad6e", desc: "Prairie ecology · soil carbon · wetland · biodiversity" },
+  { key: "Human",        icon: "🧠", color: "#c8952a", desc: "Skills · education · intergenerational design · wellbeing" },
+  { key: "Social",       icon: "🤝", color: "#4a8f9f", desc: "Community cohesion · FPIC · governance · belonging" },
+  { key: "Manufactured", icon: "🏗", color: "#9f6a4a", desc: "Infrastructure · energy · buildings · servicing" },
+  { key: "Financial",    icon: "💰", color: "#a09f6a", desc: "Returns · land appreciation · RCCS revenue · NOI" },
+];
+
+const PV_BASE_SCORES = { Natural: 3, Human: 3, Social: 4, Manufactured: 4, Financial: 3 };
+
+const PV_CAPEX = {
+  p0:  { lo: 280e3,  hi: 420e3,  note: "Story of Place, legal, ORRSC, baseline studies, CLT formation" },
+  p1a: { lo: 350e3,  hi: 900e3,  note: "Stewardship + Hub (if confirmed: +$600K–$1.4M for Hub construction)" },
+  p1b: { lo: 2800e3, hi: 4200e3, note: "Whispering Greens Rd extension + trunk utilities + microgrid spine" },
+  p2:  { lo: 3200e3, hi: 5500e3, note: "Phase 2 residential servicing, lot preparation, CLT covenant registration" },
+  p3:  { lo: 2800e3, hi: 4800e3, note: "Phase 3 residential servicing, full RCCS monitoring infrastructure" },
+};
+
+function PvSlider({ label, val, set, min, max, step, fmt, color = "#c8952a", sub }) {
+  const pct = ((val - min) / (max - min)) * 100;
+  return (
+    <div style={{ marginBottom: 12 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
+        <span style={{ fontSize: 11, color: "#8a9080" }}>{label}</span>
+        <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: "DM Mono,monospace" }}>{fmt(val)}</span>
+      </div>
+      {sub && <div style={{ fontSize: 10, color: "#6a7a62", marginBottom: 3 }}>{sub}</div>}
+      <div style={{ position: "relative", height: 5, background: "#2d4028", borderRadius: 3 }}>
+        <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${pct}%`, background: `linear-gradient(90deg,${color}60,${color})`, borderRadius: 3 }} />
+        <input type="range" min={min} max={max} step={step} value={val} onChange={e => set(Number(e.target.value))}
+          style={{ position: "absolute", top: -10, left: 0, width: "100%", opacity: 0, cursor: "pointer", height: 24 }} />
+      </div>
+    </div>
+  );
+}
+
+function PvKpi({ label, value, sub, color = "#c8b483" }) {
+  return (
+    <div style={{ background: "#1c2a1a", border: "1px solid #2d4028", borderRadius: 8, padding: "10px 12px" }}>
+      <div style={{ fontSize: 9, color: "#6a7a62", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
+      <div style={{ fontSize: 15, fontWeight: 800, color, fontFamily: "DM Mono,monospace", lineHeight: 1.1 }}>{value}</div>
+      {sub && <div style={{ fontSize: 10, color: "#6a7a62", marginTop: 4, lineHeight: 1.4 }}>{sub}</div>}
+    </div>
+  );
+}
+
+function PvCapBar({ cap, score, delta }) {
+  return (
+    <div style={{ marginBottom: 10 }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          <span style={{ fontSize: 12 }}>{cap.icon}</span>
+          <span style={{ fontSize: 11, color: "#c8b483", fontWeight: 600 }}>{cap.key}</span>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
+          {delta !== 0 && <span style={{ fontSize: 9, fontFamily: "DM Mono,monospace", color: delta > 0 ? "#7aad6e" : "#c0392b", fontWeight: 700 }}>{delta > 0 ? "+" : ""}{delta}</span>}
+          <span style={{ fontSize: 12, fontFamily: "DM Mono,monospace", fontWeight: 700, color: cap.color }}>{score.toFixed(1)}/10</span>
+        </div>
+      </div>
+      <div style={{ height: 5, background: "#2d4028", borderRadius: 3, overflow: "hidden" }}>
+        <div style={{ height: "100%", width: `${clamp(score, 0, 10) * 10}%`, background: `linear-gradient(90deg,${cap.color}60,${cap.color})`, borderRadius: 3, transition: "width 0.5s ease" }} />
+      </div>
+      <div style={{ fontSize: 9, color: "#6a7a62", marginTop: 2 }}>{cap.desc}</div>
+    </div>
+  );
+}
+
+function FinanceModel() {
+  const [activePhases, setActivePhases] = React.useState({ p0: true, p1a: false, p2: false, p3: false });
+  const [activeStreams, setActiveStreams] = React.useState(Object.fromEntries(PV_STREAMS.map(s => [s.id, s.on])));
+  const [scenario, setScenario] = React.useState("mid");
+  const [totalInvest, setTotalInvest] = React.useState(6500e3);
+  const [laneATarget, setLaneATarget] = React.useState(0.14);
+  const [capexVariant, setCapexVariant] = React.useState(0.5); // 0=lo, 1=hi
+  const [hubConfirmed, setHubConfirmed] = React.useState(false);
+
+  const mult = { low: 0, mid: 0.5, high: 1 }[scenario];
+
+  // Compute
+  const calc = React.useMemo(() => {
+    let totGross3 = 0, totGross1 = 0, totCapex = 0;
+    const deltas = { Natural: 0, Human: 0, Social: 0, Manufactured: 0, Financial: 0 };
+    const rows = [];
+
+    PV_STREAMS.forEach(s => {
+      if (!activePhases[s.phase]) return;
+      if (!activeStreams[s.id]) return;
+      if (s.conditional && !hubConfirmed) return;
+      const y1 = s.yr1Lo + (s.yr1Hi - s.yr1Lo) * mult;
+      const y3 = s.yr3Lo + (s.yr3Hi - s.yr3Lo) * mult;
+      totGross1 += y1;
+      totGross3 += y3;
+      Object.keys(deltas).forEach(k => { deltas[k] += (s.capDelta[k] || 0); });
+      rows.push({ ...s, y1, y3 });
+    });
+
+    // Capex
+    ["p0", "p1a", "p1b", "p2", "p3"].forEach(pid => {
+      const p = pid === "p1a" ? "p1a" : pid;
+      if (pid === "p0" && activePhases.p0) {
+        const c = PV_CAPEX.p0;
+        totCapex += c.lo + (c.hi - c.lo) * capexVariant;
+      } else if (pid === "p1a" && activePhases.p1a) {
+        const c = PV_CAPEX.p1a;
+        let base = c.lo + (c.hi - c.lo) * capexVariant;
+        if (hubConfirmed) base += 600e3 + 800e3 * capexVariant;
+        totCapex += base;
+      } else if (pid === "p1b" && (activePhases.p2 || activePhases.p3)) {
+        const c = PV_CAPEX.p1b;
+        totCapex += c.lo + (c.hi - c.lo) * capexVariant;
+      } else if (pid === "p2" && activePhases.p2) {
+        const c = PV_CAPEX.p2;
+        totCapex += c.lo + (c.hi - c.lo) * capexVariant;
+      } else if (pid === "p3" && activePhases.p3) {
+        const c = PV_CAPEX.p3;
+        totCapex += c.lo + (c.hi - c.lo) * capexVariant;
+      }
+    });
+
+    // NOI @ 70% margin on recurring, pass-through on lot sales
+    const recurringGross = rows.filter(s => !s.id.includes("lot_sales") && !s.noteText).reduce((a, s) => a + s.y3, 0);
+    const lotSalesGross = rows.filter(s => s.id.includes("lot_sales")).reduce((a, s) => a + s.y3, 0);
+    const noi3 = recurringGross * 0.70 + lotSalesGross * 0.30;
+
+    // Dev yield & payback
+    const devYield = totCapex > 0 && noi3 > 0 ? noi3 / totCapex : null;
+    const payback = totCapex > 0 && noi3 > 0 ? totCapex / noi3 : null;
+    const laneAReturn = totalInvest * laneATarget;
+
+    // Five Capitals
+    const scores = {};
+    PV_CAPITALS.forEach(c => { scores[c.key] = clamp(PV_BASE_SCORES[c.key] + deltas[c.key], 0, 10); });
+
+    return { totGross1, totGross3, noi3, totCapex, devYield, payback, laneAReturn, scores, deltas, rows };
+  }, [activePhases, activeStreams, scenario, mult, totalInvest, laneATarget, capexVariant, hubConfirmed]);
+
+  const anyActive = Object.values(activePhases).some(Boolean);
+
+  return (
+    <div style={{ fontFamily: "Inter,system-ui,sans-serif" }}>
+      <div style={{ marginBottom: 28 }}>
+        <div style={{ fontSize: 11, fontFamily: "DM Mono,monospace", color: "#c8952a", letterSpacing: "0.15em", textTransform: "uppercase", marginBottom: 8 }}>PRT Finance Model — Gate-Triggered</div>
+        <h2 style={{ fontSize: 28, fontWeight: 800, fontFamily: "'Cormorant Garamond',Georgia,serif", color: "#d4b483", margin: "0 0 10px" }}>Prairie Vista Estates<br />Phased Revenue & Capital Model</h2>
+        <p style={{ fontSize: 13, color: "#8a9080", maxWidth: 700, lineHeight: 1.8, margin: 0 }}>
+          Each phase unlocks when verifiable Five Capitals readiness gates are met — not on a calendar. Toggle phases and streams below to model different activation sequences.
+          The Hospitality Hub requires Phase 0 Feasibility Study confirmation before any revenue appears.
+          Scenarios represent the conservative/base/upside range across all revenue assumptions.
+        </p>
+      </div>
+
+      <div style={{ display: "grid", gridTemplateColumns: "270px 1fr 260px", gap: 20 }}>
+
+        {/* ── LEFT: PHASE + STREAM CONTROLS ── */}
+        <div>
+          {/* Scenario */}
+          <div style={{ background: "#1c2a1a", border: "1px solid #2d4028", borderRadius: 8, padding: "10px 12px", marginBottom: 14 }}>
+            <div style={{ fontSize: 9, color: "#6a7a62", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 8 }}>Revenue Scenario</div>
+            <div style={{ display: "flex", gap: 4 }}>
+              {[["low", "Conservative"], ["mid", "Base Case"], ["high", "Upside"]].map(([k, l]) => (
+                <button key={k} onClick={() => setScenario(k)} style={{ flex: 1, padding: "5px 4px", borderRadius: 5, border: `1px solid ${scenario === k ? "#c8952a" : "#2d4028"}`, background: scenario === k ? "#c8952a22" : "transparent", color: scenario === k ? "#c8952a" : "#8a9080", fontSize: 10, fontWeight: scenario === k ? 700 : 400, cursor: "pointer" }}>{l}</button>
+              ))}
+            </div>
+          </div>
+
+          {/* Hub gate */}
+          <div style={{ background: hubConfirmed ? "#1c2a1a" : "#1a1a10", border: `1px solid ${hubConfirmed ? "#7aad6e" : "#c8952a"}`, borderRadius: 8, padding: "10px 12px", marginBottom: 14 }}>
+            <label style={{ display: "flex", gap: 8, alignItems: "flex-start", cursor: "pointer" }}>
+              <div style={{ width: 13, height: 13, borderRadius: 3, border: `2px solid #7aad6e`, background: hubConfirmed ? "#7aad6e" : "transparent", flexShrink: 0, marginTop: 2, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setHubConfirmed(!hubConfirmed)}>
+                {hubConfirmed && <span style={{ fontSize: 8, color: "#0f1a0e", fontWeight: 900 }}>✓</span>}
+              </div>
+              <div onClick={() => setHubConfirmed(!hubConfirmed)}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: hubConfirmed ? "#7aad6e" : "#c8952a" }}>🏕 Hub Feasibility Confirmed</div>
+                <div style={{ fontSize: 9, color: "#8a9080", marginTop: 2 }}>Phase 0 gate — enables Hub revenue streams. Leave unchecked to model stewardship-only Phase 1A.</div>
+              </div>
+            </label>
+          </div>
+
+          {/* Phases */}
+          {Object.entries(PV_PHASES).map(([pid, ph]) => {
+            const on = activePhases[pid];
+            return (
+              <div key={pid} style={{ marginBottom: 10 }}>
+                <button onClick={() => setActivePhases(p => ({ ...p, [pid]: !p[pid] }))}
+                  style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", padding: "8px 10px", borderRadius: 7, border: `2px solid ${on ? ph.color : "#2d4028"}`, background: on ? `${ph.color}14` : "#1c2a1a", cursor: "pointer", textAlign: "left" }}>
+                  <div style={{ width: 13, height: 13, borderRadius: 3, border: `2px solid ${ph.color}`, background: on ? ph.color : "transparent", flexShrink: 0, display: "flex", alignItems: "center", justifyContent: "center" }}>
+                    {on && <span style={{ fontSize: 8, color: "#0f1a0e", fontWeight: 900 }}>✓</span>}
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: on ? ph.color : "#c8b483" }}>{ph.label} — {ph.sublabel}</div>
+                    <div style={{ fontSize: 9, color: "#6a7a62" }}>{ph.desc}</div>
+                  </div>
+                </button>
+                {on && (
+                  <div style={{ paddingLeft: 6, marginTop: 4 }}>
+                    {PV_STREAMS.filter(s => s.phase === pid).map(s => (
+                      <label key={s.id} style={{ display: "flex", gap: 7, cursor: "pointer", padding: "4px 7px", borderRadius: 5, marginBottom: 2, background: activeStreams[s.id] ? `${ph.color}0D` : "transparent", border: `1px solid ${activeStreams[s.id] ? `${ph.color}40` : "#2d4028"}` }}>
+                        <div style={{ width: 11, height: 11, borderRadius: 2, border: `2px solid ${ph.color}`, background: activeStreams[s.id] ? ph.color : "transparent", flexShrink: 0, marginTop: 3, display: "flex", alignItems: "center", justifyContent: "center" }} onClick={() => setActiveStreams(p => ({ ...p, [s.id]: !p[s.id] }))}>
+                          {activeStreams[s.id] && <span style={{ fontSize: 7, color: "#0f1a0e", fontWeight: 900 }}>✓</span>}
+                        </div>
+                        <div onClick={() => setActiveStreams(p => ({ ...p, [s.id]: !p[s.id] }))} style={{ flex: 1 }}>
+                          <div style={{ display: "flex", gap: 4, alignItems: "center", flexWrap: "wrap" }}>
+                            <span style={{ fontSize: 10 }}>{s.icon}</span>
+                            <span style={{ fontSize: 10, color: activeStreams[s.id] ? "#c8b483" : "#8a9080", fontWeight: activeStreams[s.id] ? 600 : 400 }}>{s.name.split("—")[0].trim()}</span>
+                            {s.conditional && <span style={{ fontSize: 8, color: "#c8952a", background: "#c8952a20", border: "1px solid #c8952a50", borderRadius: 3, padding: "1px 4px" }}>gate</span>}
+                            {s.noteText && <span style={{ fontSize: 8, color: "#4a8f9f", background: "#4a8f9f20", border: "1px solid #4a8f9f50", borderRadius: 3, padding: "1px 4px" }}>non-cash</span>}
+                          </div>
+                        </div>
+                      </label>
+                    ))}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <div style={{ height: 1, background: "#2d4028", margin: "12px 0" }} />
+
+          {/* Investment inputs */}
+          <div style={{ fontSize: 9, color: "#6a7a62", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10, fontWeight: 600 }}>Capital Parameters</div>
+          <PvSlider label="Total Project Investment" val={totalInvest} set={setTotalInvest} min={3e6} max={20e6} step={250e3} fmt={v => fM(v, 1)} sub="Lane A + B + catalytic combined" />
+          <PvSlider label="Lane A Target IRR" val={laneATarget} set={setLaneATarget} min={0.08} max={0.25} step={0.005} fmt={fP} color="#7aad6e" sub="Steward-aligned return target" />
+          <PvSlider label="Capex Assumption" val={capexVariant} set={setCapexVariant} min={0} max={1} step={0.1} fmt={v => v === 0 ? "Low" : v === 1 ? "High" : "Mid"} color="#9f6a4a" sub="Slides between low and high capex estimates" />
+        </div>
+
+        {/* ── CENTER: OUTPUTS ── */}
+        <div>
+          {/* KPIs */}
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 10 }}>
+            <PvKpi label="Yr 3 Gross Revenue" value={anyActive ? fM(calc.totGross3, 2) : "—"} color="#c8952a" sub="All active streams" />
+            <PvKpi label="Yr 3 NOI" value={anyActive ? fM(calc.noi3, 2) : "—"} color="#7aad6e" sub={anyActive && calc.totGross3 > 0 ? `${fP(calc.noi3 / calc.totGross3)} margin` : ""} />
+            <PvKpi label="Total Dev Capex" value={anyActive ? fM(calc.totCapex, 1) : "—"} color="#9f6a4a" sub="All active phases combined" />
+          </div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 8, marginBottom: 14 }}>
+            <PvKpi label="Dev Yield on Capex" value={calc.devYield ? fP(calc.devYield) : "N/A"} color="#c8b483" sub={calc.payback ? `${calc.payback.toFixed(1)} yr payback` : ""} />
+            <PvKpi label="Lane A Annual Return" value={fM(calc.laneAReturn, 2)} color="#7aad6e" sub={`${fP(laneATarget)} on ${fM(totalInvest, 1)}`} />
+            <PvKpi label="Investment" value={fM(totalInvest, 1)} color="#4a8f9f" sub="Adjust in left panel" />
+          </div>
+
+          {/* Capex breakdown */}
+          <div style={{ background: "#1c2a1a", border: "1px solid #2d4028", borderRadius: 9, padding: "12px 14px", marginBottom: 14 }}>
+            <div style={{ fontSize: 10, fontWeight: 700, color: "#c8b483", marginBottom: 10 }}>Capex by Phase</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2,1fr)", gap: 6 }}>
+              {Object.entries(PV_CAPEX).map(([pid, c]) => {
+                const isActive = pid === "p0" ? activePhases.p0 : pid === "p1a" ? activePhases.p1a : pid === "p1b" ? (activePhases.p2 || activePhases.p3) : activePhases[pid];
+                const est = fD(c.lo + (c.hi - c.lo) * capexVariant);
+                return (
+                  <div key={pid} style={{ background: isActive ? "#162114" : "#0f1a0e", border: `1px solid ${isActive ? "#2d4028" : "#1a2418"}`, borderRadius: 6, padding: "8px 10px", opacity: isActive ? 1 : 0.4 }}>
+                    <div style={{ fontSize: 9, fontFamily: "DM Mono,monospace", color: isActive ? "#c8952a" : "#6a7a62", fontWeight: 700 }}>{pid.toUpperCase()}</div>
+                    <div style={{ fontSize: 13, fontWeight: 800, color: "#c8b483", fontFamily: "DM Mono,monospace" }}>{est}</div>
+                    <div style={{ fontSize: 9, color: "#6a7a62", marginTop: 2, lineHeight: 1.4 }}>{c.note}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Stream table */}
+          {anyActive && calc.rows.length > 0 && (
+            <div style={{ background: "#1c2a1a", border: "1px solid #2d4028", borderRadius: 9, padding: "11px 12px" }}>
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 56px 80px 68px", gap: 4, padding: "0 6px 6px", borderBottom: "1px solid #2d4028", marginBottom: 6 }}>
+                {["Stream", "Yr 1", "Yr 3 Gross", "NOI"].map(h => <div key={h} style={{ fontSize: 8, color: "#6a7a62", textTransform: "uppercase", letterSpacing: "0.1em", textAlign: h === "Stream" ? "left" : "right" }}>{h}</div>)}
+              </div>
+              {["p1a", "p2", "p3"].map(pid => {
+                const ph = PV_PHASES[pid];
+                const prows = calc.rows.filter(s => s.phase === pid);
+                if (!prows.length) return null;
+                return (
+                  <div key={pid} style={{ marginBottom: 8 }}>
+                    <div style={{ fontSize: 8, color: ph.color, fontWeight: 700, letterSpacing: "0.1em", textTransform: "uppercase", padding: "3px 6px 2px" }}>{ph.label} — {ph.sublabel}</div>
+                    {prows.map(s => (
+                      <div key={s.id} style={{ display: "grid", gridTemplateColumns: "1fr 56px 80px 68px", gap: 4, padding: "3px 6px", borderRadius: 4, background: "#162114", marginBottom: 2, borderLeft: `3px solid ${ph.color}` }}>
+                        <div style={{ fontSize: 10, color: "#c8b483", display: "flex", gap: 3, alignItems: "center", overflow: "hidden" }}>
+                          <span>{s.icon}</span>
+                          <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", fontSize: 9 }}>{s.name.split("—")[0].trim()}</span>
+                        </div>
+                        <div style={{ fontSize: 10, fontFamily: "DM Mono,monospace", color: s.y1 > 0 ? "#c8b483" : "#6a7a62", textAlign: "right" }}>{s.y1 > 0 ? fD(s.y1) : "—"}</div>
+                        <div style={{ fontSize: 10, fontFamily: "DM Mono,monospace", color: s.y3 > 0 ? ph.color : "#6a7a62", textAlign: "right", fontWeight: s.y3 > 0 ? 700 : 400 }}>{s.y3 > 0 ? fD(s.y3) : (s.noteText ? "non-cash" : "—")}</div>
+                        <div style={{ fontSize: 10, fontFamily: "DM Mono,monospace", color: s.y3 > 0 ? "#7aad6e" : "#6a7a62", textAlign: "right" }}>{s.y3 > 0 ? fD(s.y3 * (s.id.includes("lot_sales") ? 0.30 : 0.70)) : "—"}</div>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })}
+              <div style={{ display: "grid", gridTemplateColumns: "1fr 56px 80px 68px", gap: 4, padding: "7px 6px 2px", borderTop: "1px solid #2d4028" }}>
+                <div style={{ fontSize: 11, fontWeight: 700, color: "#c8b483" }}>Total</div>
+                <div style={{ fontSize: 11, fontWeight: 800, fontFamily: "DM Mono,monospace", color: "#c8b483", textAlign: "right" }}>{fD(calc.totGross1)}</div>
+                <div style={{ fontSize: 11, fontWeight: 800, fontFamily: "DM Mono,monospace", color: "#c8952a", textAlign: "right" }}>{fD(calc.totGross3)}</div>
+                <div style={{ fontSize: 11, fontWeight: 800, fontFamily: "DM Mono,monospace", color: "#7aad6e", textAlign: "right" }}>{fD(calc.noi3)}</div>
+              </div>
+            </div>
+          )}
+
+          {!anyActive && (
+            <div style={{ textAlign: "center", padding: "50px 20px", color: "#6a7a62" }}>
+              <div style={{ fontSize: 26, marginBottom: 8 }}>☐</div>
+              <div style={{ fontSize: 13 }}>Activate phases in the left panel to run the model</div>
+            </div>
+          )}
+        </div>
+
+        {/* ── RIGHT: FIVE CAPITALS ── */}
+        <div>
+          <div style={{ fontSize: 9, color: "#6a7a62", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 12, fontWeight: 600 }}>Five Capitals Impact</div>
+          {PV_CAPITALS.map(cap => (
+            <PvCapBar key={cap.key} cap={cap} score={anyActive ? calc.scores[cap.key] : PV_BASE_SCORES[cap.key]} delta={anyActive ? calc.deltas[cap.key] : 0} />
+          ))}
+          {anyActive && (
+            <div style={{ background: "#1c2a1a", border: "1px solid #c8952a40", borderRadius: 7, padding: "11px", marginTop: 12, textAlign: "center" }}>
+              <div style={{ fontSize: 8, color: "#c8952a", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 4 }}>Composite Five Capitals</div>
+              <div style={{ fontSize: 24, fontWeight: 900, color: "#c8952a", fontFamily: "DM Mono,monospace" }}>
+                {(Object.values(calc.scores).reduce((a, b) => a + b, 0) / 5).toFixed(1)}
+                <span style={{ fontSize: 12, fontWeight: 400 }}>/10</span>
+              </div>
+            </div>
+          )}
+
+          {/* PRT Lane Summary */}
+          <div style={{ marginTop: 16 }}>
+            <div style={{ fontSize: 9, color: "#6a7a62", letterSpacing: "0.12em", textTransform: "uppercase", marginBottom: 10, fontWeight: 600 }}>PRT Lane Architecture</div>
+            {[
+              { lane: "Lane A", icon: "🏘", color: "#4a8f9f", title: "Land + Development LP", items: ["CLT acquires commons land", "Residential LP builds phases", `Target: ${fP(laneATarget)} IRR`] },
+              { lane: "Lane B", icon: "🌿", color: "#7aad6e", title: "RCCS Credit Rail", items: ["NCU: prairie + wetland carbon", "HCU, SCU, MCU, FCU credits", "AB TIER / Verra VCS adapters"] },
+              { lane: "Lane C", icon: "🌐", color: "#a09f6a", title: "FuturVille Enablement", items: ["Angela's platform = Village #1", "Design + governance IP licensing", "Scenarios added later"] },
+            ].map(l => (
+              <div key={l.lane} style={{ background: "#1c2a1a", border: `1px solid ${l.color}40`, borderLeft: `3px solid ${l.color}`, borderRadius: 7, padding: "10px 12px", marginBottom: 8 }}>
+                <div style={{ display: "flex", gap: 6, alignItems: "center", marginBottom: 6 }}>
+                  <span style={{ fontSize: 14 }}>{l.icon}</span>
+                  <div>
+                    <div style={{ fontSize: 9, color: l.color, fontFamily: "DM Mono,monospace", fontWeight: 700 }}>{l.lane}</div>
+                    <div style={{ fontSize: 11, fontWeight: 700, color: "#c8b483" }}>{l.title}</div>
+                  </div>
+                </div>
+                {l.items.map((item, i) => (
+                  <div key={i} style={{ display: "flex", gap: 6, marginBottom: 3 }}>
+                    <span style={{ color: l.color, fontSize: 10 }}>›</span>
+                    <span style={{ fontSize: 10, color: "#8a9080", lineHeight: 1.5 }}>{item}</span>
+                  </div>
+                ))}
+              </div>
+            ))}
+          </div>
+
+          <div style={{ marginTop: 10, padding: "10px 12px", background: "#1a1a10", border: "1px solid #c8952a30", borderRadius: 7 }}>
+            <div style={{ fontSize: 9, color: "#c8952a", fontWeight: 700, marginBottom: 4 }}>⚠ Illustrative Model</div>
+            <div style={{ fontSize: 9, color: "#6a7a62", lineHeight: 1.6 }}>
+              All figures are illustrative estimates for planning purposes only. Not investment advice.
+              Revenue ranges reflect conservative/base/upside assumptions from comparable regenerative projects.
+              Phase 0 Feasibility Study will produce verified numbers. Hub revenue streams are conditional on feasibility confirmation.
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
+
+
 export default function App() {
   const [tab, setTab] = useState("diagnosis");
   const [openFail, setOpenFail] = useState(null);
@@ -757,6 +1177,7 @@ export default function App() {
     { id: "capitals", label: "⚖️ Five Capitals" },
     { id: "capital_stack", label: "💰 PRT Capital" },
     { id: "phasing", label: "📅 Phasing" },
+    { id: "finance", label: "📊 Finance Model" },
     { id: "nextsteps", label: "🚀 Next Steps" },
   ];
 
@@ -804,14 +1225,15 @@ export default function App() {
           {/* === DIAGNOSIS === */}
           {tab === "diagnosis" && (
             <div>
-              <div className="verdict-banner">
-                <div className="verdict-icon">⛔</div>
-                <div className="verdict-text">
-                  <h3>The 2008 ASP Is a Blueprint for Extraction Dressed as Planning</h3>
-                  <p>
-                    Not a single design decision in this document serves community wealth, ecological health, or long-term stewardship. It is a lot-sales machine — built to subdivide, sell, and exit. After 17 years of dormancy, this is our signal to replace it entirely. The DC rezoning in 2018 was the municipality giving us permission. Let's use it.
-                  </p>
-                </div>
+              <div style={{background:"#1c2a1a",border:"1px solid #3a5a2a",borderLeft:"4px solid #c8952a",borderRadius:10,padding:"20px 24px",marginBottom:28}}>
+                <div style={{fontSize:11,fontFamily:"DM Mono,monospace",color:"#c8952a",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>Diagnostic Overview</div>
+                <p style={{fontSize:14,color:"#c8b483",lineHeight:1.85,margin:0}}>
+                  The 2008 Area Structure Plan (Bylaw 1358-08) was written for a different era and a different ambition.
+                  It segregates housing by type and income, converts productive prairie into decorative lawn, and generates wealth exactly once — on closing day — then exits.
+                  After 17 years of dormancy, the DC rezoning (Bylaw 1470-18) has already signalled that the Town expects something different.
+                  The eight structural failures documented below are not accidents of planning. They are the predictable outputs of an extraction-first model applied to land that deserves regeneration.
+                  Every one of them is correctable. The Finance Model tab shows the numbers.
+                </p>
               </div>
 
               <div className="section-label">DIAGNOSTIC REPORT</div>
@@ -1470,6 +1892,10 @@ export default function App() {
           )}
 
           {/* === NEXT STEPS === */}
+
+          {/* ═══ FINANCE MODEL TAB ═══════════════════════════════════════════ */}
+          {tab === "finance" && <FinanceModel palette={palette} />}
+
           {tab === "nextsteps" && (
             <div>
               <div className="section-label">IMMEDIATE ACTION AGENDA</div>
