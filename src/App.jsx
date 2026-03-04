@@ -1133,28 +1133,45 @@ const REF_CAT_COLORS = {
 const REF_CATS = Object.keys(REF_CAT_COLORS);
 const REF_EMPTY = { title:"", ref_date:"", source_link:"", category:"General", content:"", tags:[], project:"prairie-vista" };
 
-function PvRefPanel() {
-  const [refs, setRefs]       = React.useState([]);
-  const [loading, setLoading] = React.useState(true);
-  const [open, setOpen]       = React.useState(false);
-  const [editing, setEditing] = React.useState(null);  // null | ref object | REF_EMPTY
-  const [preview, setPreview] = React.useState(false);
+const PvRefPanel = React.memo(function PvRefPanel() {
+  const [refs, setRefs]         = React.useState([]);
+  const [loading, setLoading]   = React.useState(true);
+  const [loadErr, setLoadErr]   = React.useState(null);
+  const [open, setOpen]         = React.useState(true);   // default open
+  const [editing, setEditing]   = React.useState(null);
+  const [preview, setPreview]   = React.useState(false);
   const [tagInput, setTagInput] = React.useState("");
-  const [flash, setFlash]     = React.useState(null);
+  const [flash, setFlash]       = React.useState(null);
   const [expandedId, setExpandedId] = React.useState(null);
+  const hasFetched = React.useRef(false);  // guard against double-load
 
-  const load = async () => {
+  const load = React.useCallback(async () => {
     setLoading(true);
+    setLoadErr(null);
     try {
-      const r = await fetch(`${REF_SB_BASE}?select=*&order=category.asc,title.asc`, { headers: REF_HDR });
-      setRefs(await r.json());
-    } catch {}
-    setLoading(false);
-  };
+      const r = await fetch(
+        `${REF_SB_BASE}?select=*&order=category.asc,title.asc`,
+        { headers: REF_HDR }
+      );
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      const data = await r.json();
+      setRefs(Array.isArray(data) ? data : []);
+    } catch (e) {
+      setLoadErr(e.message);
+      setRefs([]);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
-  React.useEffect(() => { if (open) load(); }, [open]);
+  // Load once on mount — not gated on `open`
+  React.useEffect(() => {
+    if (hasFetched.current) return;
+    hasFetched.current = true;
+    load();
+  }, [load]);
 
-  const showFlash = (msg) => { setFlash(msg); setTimeout(()=>setFlash(null), 1800); };
+  const showFlash = (msg) => { setFlash(msg); setTimeout(() => setFlash(null), 1800); };
 
   const saveRef = async () => {
     if (!editing?.title?.trim()) return;
@@ -1169,20 +1186,27 @@ function PvRefPanel() {
     };
     try {
       if (editing.id) {
-        await fetch(`${REF_SB_BASE}?id=eq.${editing.id}`, { method:"PATCH", headers:REF_HDR, body:JSON.stringify(payload) });
+        const r = await fetch(`${REF_SB_BASE}?id=eq.${editing.id}`, { method:"PATCH", headers:REF_HDR, body:JSON.stringify(payload) });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
       } else {
-        await fetch(REF_SB_BASE, { method:"POST", headers:REF_HDR, body:JSON.stringify(payload) });
+        const r = await fetch(REF_SB_BASE, { method:"POST", headers:REF_HDR, body:JSON.stringify(payload) });
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
       }
       setEditing(null); setPreview(false); setTagInput("");
-      await load(); showFlash("Saved ✓");
-    } catch { showFlash("Error saving"); }
+      await load();
+      showFlash("Saved ✓");
+    } catch (e) { showFlash("Error: " + e.message); }
   };
 
   const deleteRef = async (id) => {
     if (!confirm("Delete this reference?")) return;
-    await fetch(`${REF_SB_BASE}?id=eq.${id}`, { method:"DELETE", headers:REF_HDR });
-    if (expandedId === id) setExpandedId(null);
-    await load(); showFlash("Deleted");
+    try {
+      const r = await fetch(`${REF_SB_BASE}?id=eq.${id}`, { method:"DELETE", headers:REF_HDR });
+      if (!r.ok) throw new Error(`HTTP ${r.status}`);
+      if (expandedId === id) setExpandedId(null);
+      await load();
+      showFlash("Deleted");
+    } catch (e) { showFlash("Error: " + e.message); }
   };
 
   const setF = (k,v) => setEditing(p=>({...p,[k]:v}));
@@ -1215,7 +1239,7 @@ function PvRefPanel() {
         </div>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           {flash && <span style={{fontSize:10,color:"#7aad6e",fontFamily:"'DM Mono',monospace"}}>● {flash}</span>}
-          {!loading && open && <span style={{fontSize:10,color:"#6a7a62"}}>{refs.length} refs</span>}
+          <span style={{fontSize:10,color:"#6a7a62"}}>{loading ? "loading…" : `${refs.length} refs`}</span>
           <a href="https://prt-reflib.vercel.app" target="_blank" rel="noopener"
             onClick={e=>e.stopPropagation()}
             style={{fontSize:10,color:"#4a8f9f",textDecoration:"none",
@@ -1337,9 +1361,26 @@ function PvRefPanel() {
           )}
 
           {/* Reference list grouped by category */}
-          {loading
-            ? <div style={{textAlign:"center",padding:20,color:"#6a7a62",fontSize:12}}>Loading references…</div>
-            : Object.keys(grouped).sort().map(cat => (
+          {loading && (
+            <div style={{textAlign:"center",padding:20,color:"#6a7a62",fontSize:12}}>
+              Loading references…
+            </div>
+          )}
+          {loadErr && (
+            <div style={{background:"#2a1010",border:"1px solid #c0392b40",borderRadius:7,
+              padding:"10px 14px",color:"#e74c3c",fontSize:11,marginBottom:12}}>
+              ⚠ Could not load references: {loadErr}
+              <button onClick={load} style={{marginLeft:10,padding:"2px 8px",borderRadius:4,
+                border:"1px solid #c0392b",background:"transparent",color:"#c0392b",
+                cursor:"pointer",fontSize:10}}>Retry</button>
+            </div>
+          )}
+          {!loading && !loadErr && refs.length === 0 && (
+            <div style={{textAlign:"center",padding:"24px",color:"#6a7a62",fontSize:12}}>
+              No references yet. Click <strong style={{color:"#4a8f9f"}}>+ Add Reference</strong> to start.
+            </div>
+          )}
+          {!loading && !loadErr && Object.keys(grouped).sort().map(cat => (
               <div key={cat} style={{marginBottom:16}}>
                 <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:7,
                   borderBottom:"1px solid #1e2e1c",paddingBottom:5}}>
@@ -1399,7 +1440,7 @@ function PvRefPanel() {
       )}
     </div>
   );
-}
+}); // React.memo — isolated from parent re-renders
 
 function Pv2Settings({ S, setS, onClose }) {
   const set = (k,v) => setS(p=>({...p,[k]:v}));
