@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 
+
 const palette = {
   bg: "#0f1a0e",
   surface: "#162114",
@@ -579,7 +580,7 @@ const FAILURES = [
   {
     id: "06", title: "No LRLT — Land Permanently Alienated",
     desc: "All 63 acres will be subdivided and sold to individual owners with no conservation covenants, no stewardship obligations, no community ownership stake. Value extraction is complete and permanent.",
-    fix: "REPLACE WITH: Prairie Vista Regenerative Land Trust (LRLT) holding all commons, corridors, and open space in perpetuity."
+    fix: "REPLACE WITH: FuturVille Regenerative Land Trust (LRLT) holding all commons, corridors, and open space in perpetuity."
   },
   {
     id: "07", title: "District Heating from a Dead Firm",
@@ -614,7 +615,7 @@ const CLUSTERS = [
     units: 0, color: "#c8952a",
     mix: [],
     commons: "Maker Hub · Food Hub · Co-Working · FuturVille Accelerator",
-    notes: "No residential. Pure enterprise and community infrastructure. The economic heart of the development. 1.2 ha. Designed to serve all of Vulcan, not just Prairie Vista residents. Anchors RCCS Social + Human Capital credits."
+    notes: "No residential. Pure enterprise and community infrastructure. The economic heart of the development. 1.2 ha. Designed to serve all of Vulcan, not just FuturVille residents. Anchors RCCS Social + Human Capital credits."
   },
   {
     id: "west", name: "Golf Edge Cluster",
@@ -662,11 +663,11 @@ const CLUSTERS = [
 
 const PHASES = [
   {
-    phase: "Phase 0", title: "Story of Place + LRLT Formation",
-    years: "2026 (months 1-8)",
+    phase: "Phase 0", title: "ASP + DA + RFP — Planning Foundation",
+    years: "March–April 2026",
     color: "#c8952a",
-    body: "Before a single stake goes in the ground, we listen. Story of Place methodology with Bill Reed's integrative process. Ecological baseline, watershed mapping, cultural history, community co-discovery. ORRSC pre-application consultation. Fresh infrastructure assessment. LRLT formation. RCCS baselines established.",
-    delivers: ["Story of Place Document", "LRLT Registered", "RCCS Baselines", "ASP Amendment Filed", "Infra Report", "Community Engagement"],
+    body: "The planning foundation for all development. Revised ASP submitted to ORRSC and Town of Vulcan (March 25, 2026). Development Agreement mark-up and regenerative provisions negotiated with Town of Vulcan. Master Developer RFP drafted and issued. LandScope terrain intelligence and conceptual site plan completed. Oliizoi engagement lead; RDC capital architecture overlay.",
+    delivers: ["Revised ASP — March 25", "Development Agreement", "Master Developer RFP", "LandScope Package", "Conceptual Site Plan", "LRLT Formation"],
     deliverColors: ["#c8952a", "#7aad6e", "#6b9dd4", "#d4b483", "#8a9080", "#9b59b6"]
   },
   {
@@ -689,7 +690,7 @@ const PHASES = [
     phase: "Phase 3", title: "South Entry Cluster + Full Community",
     years: "2031-2032",
     color: "#9fd48f",
-    body: "South Entry Cluster (75 units) completes the community. Solar commons array at full capacity. Community orchard mature. LRLT fully operational with stewardship income. RCCS credits across all Five Capitals in issuance. PRT Lane A/B/C fully integrated. Prairie Vista becomes a proof-of-concept for regenerative development in Alberta.",
+    body: "South Entry Cluster (75 units) completes the community. Solar commons array at full capacity. Community orchard mature. LRLT fully operational with stewardship income. RCCS credits across all Five Capitals in issuance. PRT Lane A/B/C fully integrated. FuturVille becomes a proof-of-concept for regenerative development in Alberta.",
     delivers: ["75 Blended Units", "Solar Array Full", "Community Orchard", "Full RCCS Suite", "LRLT Stewardship NOI", "Alberta Proof Case"],
     deliverColors: ["#7aad6e", "#c8952a", "#9fd48f", "#6b9dd4", "#d4b483", "#9b59b6"]
   },
@@ -742,1460 +743,6 @@ const ZONE_LABELS = {
   road: "Streets / Infrastructure",
 };
 
-
-// ════════════════════════════════════════════════════════════════════════════
-// FINANCE MODEL — Prairie Vista Estates · Gate-Triggered Phased ROI
-// ════════════════════════════════════════════════════════════════════════════
-
-const SUPABASE_URL = "https://uvojezuorjgqzmhhgluu.supabase.co";
-const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2b2plenVvcmpncXptaGhnbHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMTQ3MTcsImV4cCI6MjA4Njg5MDcxN30.1irtkNYnTJbvg8VJMQh-VpByqpmIRiASwR1qTOZ6RiQ";
-const SB_HDR = { apikey: SUPABASE_KEY, Authorization: `Bearer ${SUPABASE_KEY}`, "Content-Type": "application/json" };
-async function sbGet(key, fb) {
-  try {
-    const r = await fetch(`${SUPABASE_URL}/rest/v1/prt_storage?key=eq.${encodeURIComponent(key)}&select=value`, { headers: SB_HDR });
-    const d = await r.json();
-    if (Array.isArray(d) && d[0]?.value) return JSON.parse(d[0].value);
-  } catch {}
-  return fb;
-}
-async function sbSet(key, val) {
-  try {
-    await fetch(`${SUPABASE_URL}/rest/v1/prt_storage`, {
-      method: "POST", headers: { ...SB_HDR, Prefer: "resolution=merge-duplicates" },
-      body: JSON.stringify({ key, value: JSON.stringify(val), updated_at: new Date().toISOString() }),
-    });
-  } catch {}
-}
-
-const fM = (v, d = 1) => v === 0 ? "—" : `$${(v / 1e6).toFixed(d)}M`;
-const fK = (v) => `$${(v / 1e3).toFixed(0)}K`;
-const fD = (v) => Math.abs(v) >= 1e6 ? fM(v) : Math.abs(v) >= 1e3 ? fK(v) : `$${Number(v).toFixed(0)}`;
-const fP = (v) => `${(v * 100).toFixed(1)}%`;
-const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
-
-// Revenue streams keyed by phase
-const PV_STREAMS = [
-  // Phase 0 — no revenue, only costs
-  // Phase 1A — Stewardship + Hub (conditional)
-  { id: "hub_hospitality",  phase: "p1a", name: "Hospitality Hub — Agri-tourism & Glamping", icon: "🏕", yr1Lo: 0, yr1Hi: 0, yr3Lo: 180e3, yr3Hi: 320e3, conditional: true, condNote: "Gate: Phase 0 Feasibility Study confirms proceed", capDelta: { Natural: 1, Human: 2, Social: 2, Manufactured: 1, Financial: 1 }, on: false },
-  { id: "prairie_exp",      phase: "p1a", name: "Prairie Experience Centre — Events & Programs", icon: "🌾", yr1Lo: 0, yr1Hi: 0, yr3Lo: 60e3, yr3Hi: 120e3, conditional: true, condNote: "Gate: Hub construction confirmed", capDelta: { Natural: 0, Human: 2, Social: 3, Manufactured: 0, Financial: 0 }, on: false },
-  { id: "rccs_ncu_p1",      phase: "p1a", name: "RCCS Natural Capital Credits (NCU) — Prairie Restoration", icon: "🌿", yr1Lo: 0, yr1Hi: 0, yr3Lo: 40e3, yr3Hi: 90e3, capDelta: { Natural: 3, Human: 0, Social: 0, Manufactured: 0, Financial: 1 }, on: true },
-  { id: "rccs_scu_p1",      phase: "p1a", name: "RCCS Social Capital Credits (SCU) — Community Baseline", icon: "🤝", yr1Lo: 0, yr1Hi: 0, yr3Lo: 15e3, yr3Hi: 35e3, capDelta: { Natural: 0, Human: 0, Social: 2, Manufactured: 0, Financial: 0 }, on: true },
-  // Phase 1B — Servicing Spine (concurrent with 1A, no direct revenue)
-  // Phase 2 — Living Neighbourhoods North
-  { id: "lot_sales_p2",     phase: "p2",  name: "Residential Lot Sales — Phase 2 North (68 lots)", icon: "🏘", yr1Lo: 0, yr1Hi: 0, yr3Lo: 1200e3, yr3Hi: 2200e3, oneTime: false, capDelta: { Natural: 0, Human: 1, Social: 1, Manufactured: 2, Financial: 3 }, on: true },
-  { id: "land_lease_p2",    phase: "p2",  name: "CLT Land-Lease — Affordable & Workforce Units", icon: "🔑", yr1Lo: 0, yr1Hi: 0, yr3Lo: 85e3, yr3Hi: 160e3, capDelta: { Natural: 0, Human: 2, Social: 2, Manufactured: 0, Financial: 1 }, on: true },
-  { id: "energy_coop",      phase: "p2",  name: "Community Energy Cooperative — Solar + Geothermal", icon: "⚡", yr1Lo: 0, yr1Hi: 0, yr3Lo: 45e3, yr3Hi: 95e3, capDelta: { Natural: 1, Human: 0, Social: 1, Manufactured: 2, Financial: 1 }, on: true },
-  { id: "rccs_ncu_p2",      phase: "p2",  name: "RCCS Natural Capital Credits (NCU) — Wetland + Carbon", icon: "🌊", yr1Lo: 0, yr1Hi: 0, yr3Lo: 80e3, yr3Hi: 160e3, capDelta: { Natural: 3, Human: 0, Social: 0, Manufactured: 0, Financial: 1 }, on: true },
-  { id: "rccs_hcu",         phase: "p2",  name: "RCCS Human Capital Credits (HCU)", icon: "🧠", yr1Lo: 0, yr1Hi: 0, yr3Lo: 20e3, yr3Hi: 50e3, capDelta: { Natural: 0, Human: 3, Social: 0, Manufactured: 0, Financial: 0 }, on: true },
-  { id: "market_hall",      phase: "p2",  name: "Market Hall & Community Kitchen — Vendor Fees", icon: "🍽", yr1Lo: 0, yr1Hi: 0, yr3Lo: 30e3, yr3Hi: 65e3, capDelta: { Natural: 0, Human: 1, Social: 2, Manufactured: 0, Financial: 0 }, on: true },
-  // Phase 3 — Living Neighbourhoods South
-  { id: "lot_sales_p3",     phase: "p3",  name: "Residential Lot Sales — Phase 3 South (65 lots)", icon: "🏡", yr1Lo: 0, yr1Hi: 0, yr3Lo: 1100e3, yr3Hi: 2000e3, capDelta: { Natural: 0, Human: 1, Social: 1, Manufactured: 2, Financial: 3 }, on: true },
-  { id: "land_lease_p3",    phase: "p3",  name: "CLT Land-Lease — Phase 3 Units", icon: "🔑", yr1Lo: 0, yr1Hi: 0, yr3Lo: 80e3, yr3Hi: 150e3, capDelta: { Natural: 0, Human: 1, Social: 2, Manufactured: 0, Financial: 1 }, on: true },
-  { id: "rccs_full",        phase: "p3",  name: "RCCS Full Portfolio — All Five Capital Credits", icon: "📊", yr1Lo: 0, yr1Hi: 0, yr3Lo: 120e3, yr3Hi: 280e3, capDelta: { Natural: 2, Human: 2, Social: 2, Manufactured: 1, Financial: 2 }, on: true },
-  { id: "futvrville_lic",   phase: "p3",  name: "FuturVille Platform Licensing — Village #1 IP", icon: "🌐", yr1Lo: 0, yr1Hi: 0, yr3Lo: 40e3, yr3Hi: 120e3, capDelta: { Natural: 0, Human: 1, Social: 1, Manufactured: 0, Financial: 2 }, on: false },
-  { id: "inav_reporting",   phase: "p3",  name: "INAV Impact Asset — CLT Balance Sheet Recognition", icon: "🏦", yr1Lo: 0, yr1Hi: 0, yr3Lo: 0, yr3Hi: 0, capDelta: { Natural: 1, Human: 1, Social: 1, Manufactured: 1, Financial: 2 }, on: true, noteText: "Non-cash — ecological appreciation recognized on CLT balance sheet" },
-];
-
-const PV_PHASES = {
-  p0:  { label: "Phase 0", sublabel: "Alignment & Feasibility", color: "#c8952a", desc: "Story of Place · FPIC · CLT formation · Feasibility Studies · RCCS baselines. No construction — 100% foundation work." },
-  p1a: { label: "Phase 1A", sublabel: "Stewardship + Hub (conditional)", color: "#7aad6e", desc: "Ecological restoration begins. RCCS credits start accruing. Hub activation conditional on Phase 0 Feasibility Study." },
-  p2:  { label: "Phase 2", sublabel: "Living Neighbourhoods North", color: "#4a8f9f", desc: "First residential lots. CLT land-lease affordable units. Community energy coop. Market Hall operational." },
-  p3:  { label: "Phase 3", sublabel: "Living Neighbourhoods South", color: "#9f6a4a", desc: "Full buildout. Complete RCCS portfolio issuing. INAV reporting begins. FuturVille replication potential." },
-};
-
-const PV_CAPITALS = [
-  { key: "Natural",      icon: "🌿", color: "#7aad6e", desc: "Prairie ecology · soil carbon · wetland · biodiversity" },
-  { key: "Human",        icon: "🧠", color: "#c8952a", desc: "Skills · education · intergenerational design · wellbeing" },
-  { key: "Social",       icon: "🤝", color: "#4a8f9f", desc: "Community cohesion · FPIC · governance · belonging" },
-  { key: "Manufactured", icon: "🏗", color: "#9f6a4a", desc: "Infrastructure · energy · buildings · servicing" },
-  { key: "Financial",    icon: "💰", color: "#a09f6a", desc: "Returns · land appreciation · RCCS revenue · NOI" },
-];
-
-const PV_BASE_SCORES = { Natural: 3, Human: 3, Social: 4, Manufactured: 4, Financial: 3 };
-
-const PV_CAPEX = {
-  p0:  { lo: 280e3,  hi: 420e3,  note: "Story of Place, legal, ORRSC, baseline studies, CLT formation" },
-  p1a: { lo: 350e3,  hi: 900e3,  note: "Stewardship + Hub (if confirmed: +$600K–$1.4M for Hub construction)" },
-  p1b: { lo: 2800e3, hi: 4200e3, note: "Whispering Greens Rd extension + trunk utilities + microgrid spine" },
-  p2:  { lo: 3200e3, hi: 5500e3, note: "Phase 2 residential servicing, lot preparation, CLT covenant registration" },
-  p3:  { lo: 2800e3, hi: 4800e3, note: "Phase 3 residential servicing, full RCCS monitoring infrastructure" },
-};
-
-function PvSlider({ label, val, set, min, max, step, fmt, color = "#c8952a", sub }) {
-  const pct = ((val - min) / (max - min)) * 100;
-  return (
-    <div style={{ marginBottom: 12 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", marginBottom: 3 }}>
-        <span style={{ fontSize: 11, color: "#8a9080" }}>{label}</span>
-        <span style={{ fontSize: 12, fontWeight: 700, color, fontFamily: "DM Mono,monospace" }}>{fmt(val)}</span>
-      </div>
-      {sub && <div style={{ fontSize: 10, color: "#6a7a62", marginBottom: 3 }}>{sub}</div>}
-      <div style={{ position: "relative", height: 5, background: "#2d4028", borderRadius: 3 }}>
-        <div style={{ position: "absolute", left: 0, top: 0, height: "100%", width: `${pct}%`, background: `linear-gradient(90deg,${color}60,${color})`, borderRadius: 3 }} />
-        <input type="range" min={min} max={max} step={step} value={val} onChange={e => set(Number(e.target.value))}
-          style={{ position: "absolute", top: -10, left: 0, width: "100%", opacity: 0, cursor: "pointer", height: 24 }} />
-      </div>
-    </div>
-  );
-}
-
-function PvKpi({ label, value, sub, color = "#c8b483" }) {
-  return (
-    <div style={{ background: "#1c2a1a", border: "1px solid #2d4028", borderRadius: 8, padding: "10px 12px" }}>
-      <div style={{ fontSize: 9, color: "#6a7a62", letterSpacing: "0.1em", textTransform: "uppercase", marginBottom: 4 }}>{label}</div>
-      <div style={{ fontSize: 15, fontWeight: 800, color, fontFamily: "DM Mono,monospace", lineHeight: 1.1 }}>{value}</div>
-      {sub && <div style={{ fontSize: 10, color: "#6a7a62", marginTop: 4, lineHeight: 1.4 }}>{sub}</div>}
-    </div>
-  );
-}
-
-function PvCapBar({ cap, score, delta }) {
-  return (
-    <div style={{ marginBottom: 10 }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 3 }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          <span style={{ fontSize: 12 }}>{cap.icon}</span>
-          <span style={{ fontSize: 11, color: "#c8b483", fontWeight: 600 }}>{cap.key}</span>
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 5 }}>
-          {delta !== 0 && <span style={{ fontSize: 9, fontFamily: "DM Mono,monospace", color: delta > 0 ? "#7aad6e" : "#c0392b", fontWeight: 700 }}>{delta > 0 ? "+" : ""}{delta}</span>}
-          <span style={{ fontSize: 12, fontFamily: "DM Mono,monospace", fontWeight: 700, color: cap.color }}>{score.toFixed(1)}/10</span>
-        </div>
-      </div>
-      <div style={{ height: 5, background: "#2d4028", borderRadius: 3, overflow: "hidden" }}>
-        <div style={{ height: "100%", width: `${clamp(score, 0, 10) * 10}%`, background: `linear-gradient(90deg,${cap.color}60,${cap.color})`, borderRadius: 3, transition: "width 0.5s ease" }} />
-      </div>
-      <div style={{ fontSize: 9, color: "#6a7a62", marginTop: 2 }}>{cap.desc}</div>
-    </div>
-  );
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// PRAIRIE VISTA FINANCE MODEL v2 — PRT Gate-Triggered · All CAD
-// Sources: RCCS v2.0i L4.Eq.Kernel, PRT Exec Sum v1.7
-// Carbon: AB TIER offset market ~$22/t (oversupply; compliance frozen $95);
-//         MOU trajectory ~$65/t mid-case; Verra VCS ~$18/t
-// Glamping ADR: Alberta rural $175–$295 CAD/night; occ 40–60% (Hipcamp AB 2025)
-// Lots: Vulcan/Whispering Greens area $55K–$95K serviced + regen premium
-// CLT land-lease: ~$950/mo (30% below Vulcan market ~$1,350/mo)
-// Community dividend: 10% per RCCS v2.0i S1 (canonical minimum)
-// ════════════════════════════════════════════════════════════════════════════
-
-const PV2_SB_URL = "https://uvojezuorjgqzmhhgluu.supabase.co";
-const PV2_SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2b2plenVvcmpncXptaGhnbHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMTQ3MTcsImV4cCI6MjA4Njg5MDcxN30.1irtkNYnTJbvg8VJMQh-VpByqpmIRiASwR1qTOZ6RiQ";
-const PV2_HDR = { apikey: PV2_SB_KEY, Authorization: `Bearer ${PV2_SB_KEY}`, "Content-Type": "application/json" };
-const PV2_SK_SETTINGS = "prt:pv:settings:v2";
-const PV2_SK_SESSION  = "prt:pv:session:v2";
-
-async function pv2Get(key, fallback) {
-  try {
-    const r = await fetch(`${PV2_SB_URL}/rest/v1/prt_storage?key=eq.${encodeURIComponent(key)}&select=value`, { headers: PV2_HDR });
-    const d = await r.json();
-    if (Array.isArray(d) && d[0]?.value) return JSON.parse(d[0].value);
-  } catch {}
-  return fallback;
-}
-async function pv2Set(key, val) {
-  try {
-    await fetch(`${PV2_SB_URL}/rest/v1/prt_storage`, {
-      method: "POST",
-      headers: { ...PV2_HDR, Prefer: "resolution=merge-duplicates" },
-      body: JSON.stringify({ key, value: JSON.stringify(val), updated_at: new Date().toISOString() }),
-    });
-  } catch {}
-}
-
-const fC   = (v, d=0) => `$${Number(v).toLocaleString("en-CA",{minimumFractionDigits:d,maximumFractionDigits:d})}`;
-const fCM  = (v, d=1) => `$${(v/1e6).toFixed(d)}M`;
-const fCK  = (v)      => `$${Math.round(v/1e3)}K`;
-const fCD  = (v)      => Math.abs(v)>=1e6?fCM(v,1):Math.abs(v)>=1e3?fCK(v):`$${Math.round(v)}`;
-const fPct = (v)      => `${(v*100).toFixed(1)}%`;
-const fYr  = (v)      => v<=0?"N/A":v>30?">30 yrs":`${v.toFixed(1)} yrs`;
-const pvClamp = (v,a,b) => Math.max(a, Math.min(b, v));
-
-// ─── DEFAULT SETTINGS (ALL CAD) ─────────────────────────────────────────────
-const PV2_DEFAULTS = {
-  projectName: "Prairie Vista Estates",
-  location: "Vulcan, Alberta",
-  totalAcres: 63,
-  landCostBasis: 3200000,
-
-  // RCCS Natural Capital — Carbon
-  restorationAcres:    18,    // prairie + wetland eligible for NCU credits
-  carbonTonnesPerAcre: 1.2,   // tCO2e/ac/yr — AB mixed prairie restoration protocol
-  carbonPriceTIER:     22,    // CAD/t — AB TIER offset market (oversupply; ClearBlue Nov 2025)
-  carbonPriceMOU:      65,    // CAD/t — MOU $130 aspirational; $65 mid-case by project maturity
-  carbonPriceVerra:    18,    // CAD/t — Verra VCS voluntary
-  monitoringCostPerHa: 420,   // CAD/ha/yr — baseline + field monitoring + verification
-  communityDividendPct: 0.10, // 10% — RCCS v2.0i S1 canonical minimum
-
-  // RCCS Human Capital
-  hcuParticipantsYr3:  180,   // program participants/yr at Phase 2 maturity
-  hcuRevenuePerPart:   220,   // CAD/participant — workshops, education, skills
-
-  // RCCS Social Capital
-  scuAnnualRevCAD: 28000,     // CAD/yr — community benefit, governance programming
-
-  // RCCS Manufactured (Energy Coop)
-  mcuKwhPerYear:    180000,   // kWh/yr — community solar + geothermal generation
-  mcuRateCAD:       0.14,     // CAD/kWh — Alberta retail avg (Epcor 2025)
-
-  // Hospitality Hub (Phase 0 feasibility gate required)
-  hubUnits:       10,         // glamping units (prairie experience)
-  hubADR:         235,        // CAD/night — rural AB $175–$295 (Hipcamp AB 2025/26)
-  hubOccupancy:   0.52,       // 52% — rural AB seasonal; summer peak ~70%
-  hubOpCostPct:   0.44,       // 44% — hospitality operating cost
-  hubCapexBase:   950000,     // CAD — units + Prairie Experience Centre fit-out
-  hubProgramsCAD: 55000,      // CAD/yr — events, tours, FuturVille programming
-
-  // CLT Land-Lease (affordable + workforce housing)
-  cltUnitsP2:     14,   cltRateP2: 950,   // Phase 2: $950/mo (~30% below $1,350 Vulcan market)
-  cltUnitsP3:     13,   cltRateP3: 980,   // Phase 3: modest increase
-
-  // Lot Sales (Vulcan + regen premium)
-  lotsP2:         68,  lotPriceP2: 82000,  absP2: 14,  // $55K–$95K + ~$17K regen premium
-  lotsP3:         65,  lotPriceP3: 88000,  absP3: 14,
-
-  // Other recurring revenue
-  energyCoopCAD:  32000,  // CAD/yr net — solar/geothermal coop after operating costs
-  marketHallCAD:  42000,  // CAD/yr — vendor fees, kitchen rentals, events
-  futurvilleCAD:  55000,  // CAD/yr — FuturVille platform IP licensing (Phase 3+)
-
-  // Phase Capex Lo / Hi (CAD)
-  p0Lo: 285000,  p0Hi: 415000,
-  p1aLo: 320000, p1aHi: 560000,
-  hubLo: 750000, hubHi: 1380000,
-  p1bLo: 2800000,p1bHi: 4500000,
-  p2Lo: 3200000, p2Hi: 5500000,
-  p3Lo: 2800000, p3Hi: 4800000,
-
-  // Operating cost % of gross (non-lot) revenue
-  p1aOpPct: 0.42,
-  p2OpPct:  0.38,
-  p3OpPct:  0.35,
-  lotMargin: 0.22,  // 22% margin on lot sales after infrastructure + servicing costs
-
-  // PRT Capital Architecture
-  totalInvestCAD: 7500000,
-  laneAPct: 0.65,  // Land + Dev LP
-  laneBPct: 0.25,  // RCCS Credit Rail
-  laneCPct: 0.10,  // FuturVille Platform
-  laneAIRR:  0.14, // 14% target IRR — steward-aligned
-  laneAHurdle: 0.08,
-  mgmtFeePct: 0.015,
-
-  // Covenantal Waterfall
-  wfCLTPct:   0.40,
-  wfPlacePct: 0.20,
-  wfPRTPct:   0.20,
-  wfInvPct:   0.20,
-
-  // Five Capitals Baselines
-  baseNatural:      3.5,
-  baseHuman:        3.0,
-  baseSocial:       4.0,
-  baseManufactured: 4.5,
-  baseFinancial:    2.5,
-};
-
-// Five Capitals deltas contributed by each stream when active
-const PV2_DELTAS = {
-  rccs_ncu:    { Natural:3,  Human:0,  Social:0,  Manufactured:0, Financial:1 },
-  rccs_hcu:    { Natural:0,  Human:3,  Social:1,  Manufactured:0, Financial:0 },
-  rccs_scu:    { Natural:0,  Human:0,  Social:3,  Manufactured:0, Financial:0 },
-  rccs_mcu:    { Natural:1,  Human:0,  Social:0,  Manufactured:2, Financial:1 },
-  hub:         { Natural:1,  Human:2,  Social:2,  Manufactured:1, Financial:2 },
-  clt:         { Natural:0,  Human:2,  Social:3,  Manufactured:0, Financial:1 },
-  lots:        { Natural:0,  Human:1,  Social:1,  Manufactured:2, Financial:3 },
-  energy:      { Natural:1,  Human:0,  Social:1,  Manufactured:2, Financial:1 },
-  market:      { Natural:0,  Human:1,  Social:2,  Manufactured:0, Financial:1 },
-  futurville:  { Natural:0,  Human:1,  Social:1,  Manufactured:0, Financial:2 },
-};
-
-const PV2_CAPS = [
-  { key:"Natural",      icon:"🌿", color:"#7aad6e", desc:"Prairie · wetland · soil carbon · biodiversity" },
-  { key:"Human",        icon:"🧠", color:"#c8952a", desc:"Skills · wellness · education · intergenerational" },
-  { key:"Social",       icon:"🤝", color:"#4a8f9f", desc:"FPIC · governance · community cohesion" },
-  { key:"Manufactured", icon:"🏗",  color:"#9f6a4a", desc:"Infrastructure · energy · buildings" },
-  { key:"Financial",    icon:"💰", color:"#a09f6a", desc:"Returns · land appreciation · RCCS · NOI" },
-];
-
-// ─── SMALL UI ATOMS ──────────────────────────────────────────────────────────
-function Pv2Slider({label,val,set,min,max,step,fmt,color="#c8952a",sub,disabled}){
-  const pct=((val-min)/(max-min))*100;
-  return(
-    <div style={{marginBottom:12,opacity:disabled?0.4:1}}>
-      <div style={{display:"flex",justifyContent:"space-between",marginBottom:3}}>
-        <span style={{fontSize:11,color:"#8a9080"}}>{label}</span>
-        <span style={{fontSize:12,fontWeight:700,color,fontFamily:"'DM Mono',monospace"}}>{fmt(val)}</span>
-      </div>
-      {sub&&<div style={{fontSize:10,color:"#6a7a62",marginBottom:3}}>{sub}</div>}
-      <div style={{position:"relative",height:5,background:"#2d4028",borderRadius:3}}>
-        <div style={{position:"absolute",left:0,top:0,height:"100%",width:`${pct}%`,
-          background:`linear-gradient(90deg,${color}60,${color})`,borderRadius:3}}/>
-        <input type="range" min={min} max={max} step={step} value={val} disabled={disabled}
-          onChange={e=>set(Number(e.target.value))}
-          style={{position:"absolute",top:-10,left:0,width:"100%",opacity:0,height:24,
-            cursor:disabled?"not-allowed":"pointer"}}/>
-      </div>
-    </div>
-  );
-}
-
-function Pv2NumInput({label,val,set,prefix="$",suffix="",note,step=1000,wide}){
-  return(
-    <div style={{marginBottom:10,gridColumn:wide?"1/-1":"auto"}}>
-      <div style={{fontSize:10,color:"#6a7a62",marginBottom:3}}>{label}</div>
-      {note&&<div style={{fontSize:9,color:"#6a7a62",opacity:.75,marginBottom:3,lineHeight:1.4}}>{note}</div>}
-      <div style={{display:"flex",alignItems:"center",background:"#1a2a18",borderRadius:5,
-        border:"1px solid #2d4028",overflow:"hidden"}}>
-        {prefix&&<span style={{fontSize:11,color:"#6a7a62",padding:"0 7px",flexShrink:0}}>{prefix}</span>}
-        <input type="number" value={val} step={step}
-          onChange={e=>set(Number(e.target.value)||0)}
-          style={{flex:1,background:"transparent",border:"none",outline:"none",
-            color:"#c8b483",fontFamily:"'DM Mono',monospace",fontSize:12,
-            padding:"6px 4px 6px 0",minWidth:0}}/>
-        {suffix&&<span style={{fontSize:11,color:"#6a7a62",padding:"0 7px",flexShrink:0}}>{suffix}</span>}
-      </div>
-    </div>
-  );
-}
-
-function Pv2Kpi({label,value,sub,color="#c8b483",warn}){
-  return(
-    <div style={{background:"#1c2a1a",border:`1px solid ${warn?"#c0392b40":"#2d4028"}`,borderRadius:8,padding:"10px 12px"}}>
-      <div style={{fontSize:9,color:"#6a7a62",letterSpacing:"0.1em",textTransform:"uppercase",marginBottom:4}}>{label}</div>
-      <div style={{fontSize:14,fontWeight:800,color:warn?"#e74c3c":color,
-        fontFamily:"'DM Mono',monospace",lineHeight:1.1}}>{value}</div>
-      {sub&&<div style={{fontSize:10,color:"#6a7a62",marginTop:4,lineHeight:1.4}}>{sub}</div>}
-    </div>
-  );
-}
-
-function Pv2CapBar({cap,score,delta}){
-  return(
-    <div style={{marginBottom:10}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:3}}>
-        <div style={{display:"flex",alignItems:"center",gap:5}}>
-          <span style={{fontSize:12}}>{cap.icon}</span>
-          <span style={{fontSize:11,color:"#c8b483",fontWeight:600}}>{cap.key}</span>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:5}}>
-          {delta!==0&&<span style={{fontSize:9,fontFamily:"'DM Mono',monospace",
-            color:delta>0?"#7aad6e":"#c0392b",fontWeight:700}}>
-            {delta>0?`+${delta}`:delta}</span>}
-          <span style={{fontSize:12,fontFamily:"'DM Mono',monospace",fontWeight:700,color:cap.color}}>
-            {score.toFixed(1)}/10</span>
-        </div>
-      </div>
-      <div style={{height:5,background:"#2d4028",borderRadius:3,overflow:"hidden"}}>
-        <div style={{height:"100%",width:`${pvClamp(score,0,10)*10}%`,
-          background:`linear-gradient(90deg,${cap.color}60,${cap.color})`,
-          borderRadius:3,transition:"width 0.4s ease"}}/>
-      </div>
-      <div style={{fontSize:9,color:"#6a7a62",marginTop:2}}>{cap.desc}</div>
-    </div>
-  );
-}
-
-function Pv2SectBox({title,color="#c8952a",children}){
-  const [open,setOpen] = React.useState(true);
-  return(
-    <div style={{marginBottom:18}}>
-      <button onClick={()=>setOpen(!open)} style={{display:"flex",alignItems:"center",
-        gap:8,width:"100%",background:"transparent",border:"none",cursor:"pointer",
-        borderBottom:`1px solid ${color}40`,paddingBottom:7,marginBottom:open?12:0}}>
-        <span style={{fontSize:9,color,fontWeight:700,letterSpacing:"0.12em",
-          textTransform:"uppercase",flex:1,textAlign:"left"}}>{title}</span>
-        <span style={{fontSize:11,color:"#6a7a62"}}>{open?"▲":"▼"}</span>
-      </button>
-      {open&&<div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:"0 16px"}}>{children}</div>}
-    </div>
-  );
-}
-
-// ─── SETTINGS PAGE ───────────────────────────────────────────────────────────
-// ── PRT Reference Library — embedded panel (shared Supabase table) ─────────────
-const REF_SB_BASE = "https://uvojezuorjgqzmhhgluu.supabase.co/rest/v1/prt_references";
-const REF_HDR = {
-  apikey: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2b2plenVvcmpncXptaGhnbHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMTQ3MTcsImV4cCI6MjA4Njg5MDcxN30.1irtkNYnTJbvg8VJMQh-VpByqpmIRiASwR1qTOZ6RiQ",
-  Authorization: "Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InV2b2plenVvcmpncXptaGhnbHV1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzEzMTQ3MTcsImV4cCI6MjA4Njg5MDcxN30.1irtkNYnTJbvg8VJMQh-VpByqpmIRiASwR1qTOZ6RiQ",
-  "Content-Type": "application/json",
-  Prefer: "return=representation",
-};
-const REF_CAT_COLORS = {
-  "RCCS / Carbon":"#7aad6e","PRT Canonical":"#c8952a","Real Estate / Lots":"#9f6a4a",
-  "CLT / Affordable Housing":"#4a8f9f","Hospitality / Hub":"#c8952a","Energy / MCU":"#a09f6a",
-  "Agriculture / Land":"#7aad6e","Municipal Intelligence":"#4a8f9f","Prairie Vista":"#c8952a",
-  "Finance / Investment":"#a09f6a","Legal / Compliance":"#9f6a4a","General":"#6a7a62",
-};
-const REF_CATS = Object.keys(REF_CAT_COLORS);
-const REF_EMPTY = { title:"", ref_date:"", source_link:"", category:"General", content:"", tags:[], project:"prairie-vista" };
-
-const PvRefPanel = React.memo(function PvRefPanel() {
-  const [refs, setRefs]         = React.useState([]);
-  const [loading, setLoading]   = React.useState(true);
-  const [loadErr, setLoadErr]   = React.useState(null);
-  const [open, setOpen]         = React.useState(true);   // default open
-  const [editing, setEditing]   = React.useState(null);
-  const [preview, setPreview]   = React.useState(false);
-  const [tagInput, setTagInput] = React.useState("");
-  const [flash, setFlash]       = React.useState(null);
-  const [expandedId, setExpandedId] = React.useState(null);
-  const hasFetched = React.useRef(false);  // guard against double-load
-
-  const load = React.useCallback(async () => {
-    setLoading(true);
-    setLoadErr(null);
-    try {
-      const r = await fetch(
-        `${REF_SB_BASE}?select=*&order=category.asc,title.asc`,
-        { headers: REF_HDR }
-      );
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = await r.json();
-      setRefs(Array.isArray(data) ? data : []);
-    } catch (e) {
-      setLoadErr(e.message);
-      setRefs([]);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  // Load once on mount — not gated on `open`
-  React.useEffect(() => {
-    if (hasFetched.current) return;
-    hasFetched.current = true;
-    load();
-  }, [load]);
-
-  const showFlash = (msg) => { setFlash(msg); setTimeout(() => setFlash(null), 1800); };
-
-  const saveRef = async () => {
-    if (!editing?.title?.trim()) return;
-    const payload = {
-      title: editing.title.trim(),
-      ref_date: editing.ref_date || null,
-      source_link: editing.source_link?.trim() || null,
-      category: editing.category || "General",
-      content: editing.content || null,
-      tags: editing.tags?.length ? editing.tags : null,
-      project: editing.project || "prairie-vista",
-    };
-    try {
-      if (editing.id) {
-        const r = await fetch(`${REF_SB_BASE}?id=eq.${editing.id}`, { method:"PATCH", headers:REF_HDR, body:JSON.stringify(payload) });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      } else {
-        const r = await fetch(REF_SB_BASE, { method:"POST", headers:REF_HDR, body:JSON.stringify(payload) });
-        if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      }
-      setEditing(null); setPreview(false); setTagInput("");
-      await load();
-      showFlash("Saved ✓");
-    } catch (e) { showFlash("Error: " + e.message); }
-  };
-
-  const deleteRef = async (id) => {
-    if (!confirm("Delete this reference?")) return;
-    try {
-      const r = await fetch(`${REF_SB_BASE}?id=eq.${id}`, { method:"DELETE", headers:REF_HDR });
-      if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      if (expandedId === id) setExpandedId(null);
-      await load();
-      showFlash("Deleted");
-    } catch (e) { showFlash("Error: " + e.message); }
-  };
-
-  const setF = (k,v) => setEditing(p=>({...p,[k]:v}));
-  const addTag = () => {
-    const t = tagInput.trim().toLowerCase().replace(/\s+/g,"-");
-    if (t && !(editing.tags||[]).includes(t)) setF("tags",[...(editing.tags||[]),t]);
-    setTagInput("");
-  };
-
-  const inputSt = { width:"100%", background:"#1a2a18", border:"1px solid #2d4028", borderRadius:5,
-    color:"#c8b483", fontFamily:"'DM Mono',monospace", fontSize:11,
-    padding:"6px 9px", outline:"none", boxSizing:"border-box" };
-
-  const grouped = refs.reduce((acc, r) => {
-    (acc[r.category] = acc[r.category] || []).push(r); return acc;
-  }, {});
-
-  return (
-    <div style={{marginTop:28,borderTop:"1px solid #2d4028",paddingTop:20}}>
-      {/* Section header */}
-      <button onClick={()=>setOpen(!open)}
-        style={{display:"flex",alignItems:"center",gap:10,width:"100%",background:"transparent",
-          border:"none",cursor:"pointer",marginBottom:open?16:0}}>
-        <div style={{flex:1,textAlign:"left"}}>
-          <div style={{fontSize:9,color:"#4a8f9f",fontWeight:700,letterSpacing:"0.14em",
-            textTransform:"uppercase"}}>📚 Reference Library</div>
-          <div style={{fontSize:12,color:"#c8b483",marginTop:2}}>
-            Source citations, research notes &amp; canonical references — shared across all PRT projects
-          </div>
-        </div>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          {flash && <span style={{fontSize:10,color:"#7aad6e",fontFamily:"'DM Mono',monospace"}}>● {flash}</span>}
-          <span style={{fontSize:10,color:"#6a7a62"}}>{loading ? "loading…" : `${refs.length} refs`}</span>
-          <a href="https://prt-reflib.vercel.app" target="_blank" rel="noopener"
-            onClick={e=>e.stopPropagation()}
-            style={{fontSize:10,color:"#4a8f9f",textDecoration:"none",
-              border:"1px solid #4a8f9f40",borderRadius:4,padding:"3px 8px"}}>
-            🌐 Full Library →
-          </a>
-          <span style={{fontSize:11,color:"#6a7a62"}}>{open?"▲":"▼"}</span>
-        </div>
-      </button>
-
-      {open && (
-        <div>
-          {/* Add new / toolbar */}
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <div style={{fontSize:10,color:"#6a7a62"}}>
-              Same database as{" "}
-              <a href="https://prt-reflib.vercel.app" target="_blank" rel="noopener"
-                style={{color:"#4a8f9f"}}>prt-reflib.vercel.app</a>
-              {" "}— add here or there, appears everywhere.
-            </div>
-            <button onClick={()=>{setEditing({...REF_EMPTY});setPreview(false);}}
-              style={{padding:"6px 14px",borderRadius:6,border:"1px solid #4a8f9f",
-                background:"#4a8f9f20",color:"#4a8f9f",cursor:"pointer",fontWeight:700,fontSize:11}}>
-              + Add Reference
-            </button>
-          </div>
-
-          {/* Inline editor */}
-          {editing !== null && (
-            <div style={{background:"#162114",border:"1px solid #c8952a40",borderRadius:9,
-              padding:"16px 18px",marginBottom:18}}>
-              <div style={{fontSize:10,color:"#c8952a",fontWeight:700,letterSpacing:"0.1em",
-                textTransform:"uppercase",marginBottom:12}}>
-                {editing.id ? "Edit Reference" : "New Reference"}
-              </div>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:"0 14px"}}>
-                <div style={{gridColumn:"1/-1",marginBottom:10}}>
-                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:3}}>Title *</div>
-                  <input value={editing.title} onChange={e=>setF("title",e.target.value)}
-                    placeholder="e.g. Alberta TIER Offset Market Price 2025" style={inputSt}/>
-                </div>
-                <div style={{marginBottom:10}}>
-                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:3}}>Date</div>
-                  <input type="date" value={editing.ref_date||""} onChange={e=>setF("ref_date",e.target.value)} style={inputSt}/>
-                </div>
-                <div style={{marginBottom:10}}>
-                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:3}}>Category</div>
-                  <select value={editing.category} onChange={e=>setF("category",e.target.value)}
-                    style={{...inputSt,cursor:"pointer"}}>
-                    {REF_CATS.map(c=><option key={c}>{c}</option>)}
-                  </select>
-                </div>
-                <div style={{marginBottom:10}}>
-                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:3}}>Project Scope</div>
-                  <select value={editing.project} onChange={e=>setF("project",e.target.value)}
-                    style={{...inputSt,cursor:"pointer"}}>
-                    {["global","prairie-vista","dos-pueblos"].map(p=><option key={p}>{p}</option>)}
-                  </select>
-                </div>
-                <div style={{gridColumn:"1/-1",marginBottom:10}}>
-                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:3}}>Source Link (optional)</div>
-                  <input value={editing.source_link||""} onChange={e=>setF("source_link",e.target.value)}
-                    placeholder="https://..." style={inputSt}/>
-                </div>
-                <div style={{gridColumn:"1/-1",marginBottom:10}}>
-                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:4}}>Tags</div>
-                  <div style={{display:"flex",gap:4,flexWrap:"wrap",marginBottom:5}}>
-                    {(editing.tags||[]).map(t=>(
-                      <span key={t} style={{display:"inline-flex",alignItems:"center",gap:3,
-                        background:"#2d4028",borderRadius:10,padding:"2px 7px",fontSize:9,color:"#8a9080"}}>
-                        {t}
-                        <button onClick={()=>setF("tags",(editing.tags||[]).filter(x=>x!==t))}
-                          style={{background:"none",border:"none",color:"#6a7a62",cursor:"pointer",fontSize:10,padding:0}}>×</button>
-                      </span>
-                    ))}
-                  </div>
-                  <div style={{display:"flex",gap:6}}>
-                    <input value={tagInput} onChange={e=>setTagInput(e.target.value)}
-                      onKeyDown={e=>{if(e.key==="Enter"||e.key===","){e.preventDefault();addTag();}}}
-                      placeholder="tag, press Enter" style={{...inputSt,flex:1}}/>
-                    <button onClick={addTag} style={{padding:"5px 10px",borderRadius:4,
-                      border:"1px solid #2d4028",background:"#2d4028",color:"#8a9080",cursor:"pointer",fontSize:10}}>+</button>
-                  </div>
-                </div>
-                <div style={{gridColumn:"1/-1"}}>
-                  <div style={{display:"flex",justifyContent:"space-between",marginBottom:5}}>
-                    <div style={{fontSize:9,color:"#6a7a62"}}>Content (Markdown)</div>
-                    <button onClick={()=>setPreview(!preview)}
-                      style={{padding:"2px 9px",borderRadius:4,
-                        border:`1px solid ${preview?"#c8952a":"#2d4028"}`,
-                        background:preview?"#c8952a20":"transparent",
-                        color:preview?"#c8952a":"#6a7a62",cursor:"pointer",fontSize:9}}>
-                      {preview?"✎ Edit":"👁 Preview"}
-                    </button>
-                  </div>
-                  {preview
-                    ? <div style={{background:"#1a2a18",border:"1px solid #2d4028",borderRadius:6,
-                        padding:"12px 14px",minHeight:120,maxHeight:300,overflowY:"auto",fontSize:12,
-                        color:"#c8b483",lineHeight:1.7,whiteSpace:"pre-wrap"}}>
-                        {editing.content||<span style={{color:"#6a7a62",fontStyle:"italic"}}>Nothing to preview.</span>}
-                      </div>
-                    : <textarea value={editing.content||""} onChange={e=>setF("content",e.target.value)}
-                        rows={7} placeholder={"## Title\n\nNotes, data points, sources...\n\n### Key Facts\n- Fact one"}
-                        style={{...inputSt,resize:"vertical",minHeight:120,lineHeight:1.6}}/>
-                  }
-                </div>
-              </div>
-              <div style={{display:"flex",justifyContent:"flex-end",gap:8,marginTop:12}}>
-                <button onClick={()=>{setEditing(null);setPreview(false);setTagInput("");}}
-                  style={{padding:"6px 14px",borderRadius:5,border:"1px solid #2d4028",
-                    background:"transparent",color:"#6a7a62",cursor:"pointer",fontSize:11}}>Cancel</button>
-                <button onClick={saveRef} disabled={!editing.title?.trim()}
-                  style={{padding:"6px 16px",borderRadius:5,border:"1px solid #c8952a",
-                    background:"#c8952a20",color:"#c8952a",cursor:"pointer",fontWeight:700,fontSize:11}}>
-                  Save Reference
-                </button>
-              </div>
-            </div>
-          )}
-
-          {/* Reference list grouped by category */}
-          {loading && (
-            <div style={{textAlign:"center",padding:20,color:"#6a7a62",fontSize:12}}>
-              Loading references…
-            </div>
-          )}
-          {loadErr && (
-            <div style={{background:"#2a1010",border:"1px solid #c0392b40",borderRadius:7,
-              padding:"10px 14px",color:"#e74c3c",fontSize:11,marginBottom:12}}>
-              ⚠ Could not load references: {loadErr}
-              <button onClick={load} style={{marginLeft:10,padding:"2px 8px",borderRadius:4,
-                border:"1px solid #c0392b",background:"transparent",color:"#c0392b",
-                cursor:"pointer",fontSize:10}}>Retry</button>
-            </div>
-          )}
-          {!loading && !loadErr && refs.length === 0 && (
-            <div style={{textAlign:"center",padding:"24px",color:"#6a7a62",fontSize:12}}>
-              No references yet. Click <strong style={{color:"#4a8f9f"}}>+ Add Reference</strong> to start.
-            </div>
-          )}
-          {!loading && !loadErr && Object.keys(grouped).sort().map(cat => (
-              <div key={cat} style={{marginBottom:16}}>
-                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:7,
-                  borderBottom:"1px solid #1e2e1c",paddingBottom:5}}>
-                  <span style={{background:`${REF_CAT_COLORS[cat]||"#6a7a62"}20`,
-                    border:`1px solid ${REF_CAT_COLORS[cat]||"#6a7a62"}50`,borderRadius:4,
-                    padding:"2px 7px",fontSize:9,color:REF_CAT_COLORS[cat]||"#6a7a62",
-                    fontWeight:700,letterSpacing:"0.06em"}}>{cat}</span>
-                  <span style={{fontSize:9,color:"#6a7a62"}}>{grouped[cat].length}</span>
-                </div>
-                {grouped[cat].map(r => (
-                  <div key={r.id} style={{background:"#1c2a1a",border:"1px solid #2d4028",
-                    borderLeft:`3px solid ${REF_CAT_COLORS[r.category]||"#6a7a62"}`,
-                    borderRadius:7,marginBottom:6,overflow:"hidden"}}>
-                    {/* Row header */}
-                    <div style={{display:"flex",alignItems:"center",gap:8,padding:"8px 12px",cursor:"pointer"}}
-                      onClick={()=>setExpandedId(expandedId===r.id?null:r.id)}>
-                      <div style={{flex:1}}>
-                        <div style={{fontSize:12,fontWeight:700,color:"#c8b483"}}>{r.title}</div>
-                        <div style={{display:"flex",gap:8,marginTop:3,alignItems:"center"}}>
-                          {r.ref_date&&<span style={{fontSize:9,color:"#6a7a62",fontFamily:"'DM Mono',monospace"}}>📅 {r.ref_date}</span>}
-                          {r.source_link&&<a href={r.source_link} target="_blank" rel="noopener"
-                            onClick={e=>e.stopPropagation()}
-                            style={{fontSize:9,color:"#4a8f9f",textDecoration:"none"}}>🔗 source</a>}
-                          <span style={{fontSize:9,color:r.project==="global"?"#c8952a":r.project==="prairie-vista"?"#7aad6e":"#4a8f9f"}}>
-                            {r.project==="global"?"🌐":"🌾"} {r.project}
-                          </span>
-                          {r.tags?.map(t=>(
-                            <span key={t} style={{background:"#2d4028",borderRadius:8,
-                              padding:"1px 6px",fontSize:9,color:"#6a7a62"}}>{t}</span>
-                          ))}
-                        </div>
-                      </div>
-                      <div style={{display:"flex",gap:5,flexShrink:0}}>
-                        <button onClick={e=>{e.stopPropagation();setEditing({...r});setPreview(false);}}
-                          style={{background:"#2d4028",border:"none",borderRadius:3,
-                            color:"#8a9080",cursor:"pointer",padding:"3px 7px",fontSize:9}}>Edit</button>
-                        <button onClick={e=>{e.stopPropagation();deleteRef(r.id);}}
-                          style={{background:"transparent",border:"1px solid #c0392b30",borderRadius:3,
-                            color:"#c0392b",cursor:"pointer",padding:"3px 7px",fontSize:9}}>✕</button>
-                        <span style={{fontSize:10,color:"#6a7a62"}}>{expandedId===r.id?"▲":"▼"}</span>
-                      </div>
-                    </div>
-                    {/* Expanded content */}
-                    {expandedId===r.id && r.content && (
-                      <div style={{borderTop:"1px solid #2d4028",padding:"12px 14px",
-                        background:"#162114",fontSize:11,color:"#c8b483",lineHeight:1.7,
-                        whiteSpace:"pre-wrap",maxHeight:300,overflowY:"auto"}}>
-                        {r.content}
-                      </div>
-                    )}
-                  </div>
-                ))}
-              </div>
-            ))
-          }
-        </div>
-      )}
-    </div>
-  );
-}); // React.memo — isolated from parent re-renders
-
-function Pv2Settings({ S, setS, onClose }) {
-  const set = (k,v) => setS(p=>({...p,[k]:v}));
-  return(
-    <div style={{padding:"20px 24px",fontFamily:"Inter,system-ui,sans-serif"}}>
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:24,flexWrap:"wrap",gap:12}}>
-        <div>
-          <div style={{fontSize:9,color:"#c8952a",letterSpacing:"0.2em",textTransform:"uppercase",marginBottom:3}}>Finance Model — Configuration</div>
-          <div style={{fontSize:20,fontWeight:800,fontFamily:"'Cormorant Garamond',Georgia,serif",color:"#d4b483"}}>Settings — {S.projectName}</div>
-          <div style={{fontSize:11,color:"#6a7a62",marginTop:3}}>All values in Canadian Dollars (CAD) · Changes auto-saved to Supabase</div>
-        </div>
-        <button onClick={onClose} style={{padding:"8px 18px",borderRadius:7,border:"1px solid #c8952a",
-          background:"#c8952a20",color:"#c8952a",cursor:"pointer",fontWeight:700,fontSize:12}}>← Back to Model</button>
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"1fr 1fr 1fr",gap:28}}>
-
-        {/* COL 1 */}
-        <div>
-          <Pv2SectBox title="Project Identity">
-            <div style={{gridColumn:"1/-1",marginBottom:10}}>
-              <div style={{fontSize:10,color:"#6a7a62",marginBottom:3}}>Project Name</div>
-              <input value={S.projectName} onChange={e=>set("projectName",e.target.value)}
-                style={{width:"100%",background:"#1a2a18",border:"1px solid #2d4028",borderRadius:5,
-                  color:"#c8b483",fontFamily:"'DM Mono',monospace",fontSize:12,padding:"6px 10px",
-                  outline:"none",boxSizing:"border-box"}}/>
-            </div>
-            <Pv2NumInput label="Total Acres" val={S.totalAcres} set={v=>set("totalAcres",v)} prefix="" suffix=" ac" step={1}/>
-            <Pv2NumInput label="Land Cost Basis (CAD)" val={S.landCostBasis} set={v=>set("landCostBasis",v)} step={100000}
-              note="Angela's estimated acquisition cost basis"/>
-          </Pv2SectBox>
-
-          <Pv2SectBox title="RCCS — Natural Capital (Carbon)" color="#7aad6e">
-            <Pv2NumInput label="RCCS Restoration Acres" val={S.restorationAcres} set={v=>set("restorationAcres",v)} prefix="" suffix=" ac" step={1}
-              note="Of 63 ac: prairie + wetland eligible for NCU credits"/>
-            <Pv2NumInput label="Sequestration Rate" val={S.carbonTonnesPerAcre} set={v=>set("carbonTonnesPerAcre",v)} prefix="" suffix=" t CO2/ac/yr" step={0.1}
-              note="AB mixed prairie restoration: 0.8–1.8 t/ac/yr"/>
-            <Pv2NumInput label="AB TIER Offset Price" val={S.carbonPriceTIER} set={v=>set("carbonPriceTIER",v)} suffix=" CAD/t"
-              note="Market ~$22/t (oversupply; ClearBlue Nov 2025)"/>
-            <Pv2NumInput label="MOU Trajectory Price" val={S.carbonPriceMOU} set={v=>set("carbonPriceMOU",v)} suffix=" CAD/t"
-              note="$130/t MOU aspirational; $65 mid-case at maturity"/>
-            <Pv2NumInput label="Verra VCS Voluntary" val={S.carbonPriceVerra} set={v=>set("carbonPriceVerra",v)} suffix=" CAD/t"
-              note="Verra voluntary carbon market ~$18 CAD/t"/>
-            <Pv2NumInput label="Monitoring Cost" val={S.monitoringCostPerHa} set={v=>set("monitoringCostPerHa",v)} suffix=" CAD/ha/yr"
-              note="Baseline studies + field monitoring + 3rd-party verification"/>
-            <Pv2NumInput label="Community Dividend %" val={Math.round(S.communityDividendPct*100)} set={v=>set("communityDividendPct",v/100)} prefix="" suffix=" %" step={1}
-              note="RCCS v2.0i S1: 10% canonical minimum — do not reduce"/>
-          </Pv2SectBox>
-
-          <Pv2SectBox title="RCCS — Human, Social & Manufactured" color="#4a8f9f">
-            <Pv2NumInput label="HCU Participants at Yr3" val={S.hcuParticipantsYr3} set={v=>set("hcuParticipantsYr3",v)} prefix="" suffix=" people" step={10}/>
-            <Pv2NumInput label="HCU Revenue / Participant" val={S.hcuRevenuePerPart} set={v=>set("hcuRevenuePerPart",v)} suffix=" CAD"
-              note="Workshops, education, skills certification"/>
-            <Pv2NumInput label="SCU Annual Revenue (Yr3)" val={S.scuAnnualRevCAD} set={v=>set("scuAnnualRevCAD",v)}
-              note="Community benefit agreements, governance value"/>
-            <Pv2NumInput label="Energy Output (Yr3)" val={S.mcuKwhPerYear} set={v=>set("mcuKwhPerYear",v)} prefix="" suffix=" kWh/yr" step={10000}
-              note="Community solar + geothermal cooperative"/>
-            <Pv2NumInput label="Energy Rate" val={S.mcuRateCAD} set={v=>set("mcuRateCAD",v)} prefix="" suffix=" CAD/kWh" step={0.01}
-              note="Alberta retail avg ~$0.14/kWh (Epcor 2025)"/>
-          </Pv2SectBox>
-        </div>
-
-        {/* COL 2 */}
-        <div>
-          <Pv2SectBox title="Hospitality Hub — Phase 0 Feasibility Gate" color="#c8952a">
-            <Pv2NumInput label="Glamping Units" val={S.hubUnits} set={v=>set("hubUnits",v)} prefix="" suffix=" units" step={1}
-              note="Prairie experience glamping (Star Trek Vulcan appeal)"/>
-            <Pv2NumInput label="ADR (Avg Daily Rate)" val={S.hubADR} set={v=>set("hubADR",v)} suffix=" CAD/night"
-              note="Alberta rural glamping $175–$295 (Hipcamp AB 2025/26)"/>
-            <Pv2NumInput label="Target Occupancy %" val={Math.round(S.hubOccupancy*100)} set={v=>set("hubOccupancy",v/100)} prefix="" suffix=" %" step={1}
-              note="Rural AB seasonal baseline 40–60%; summer peak ~70%"/>
-            <Pv2NumInput label="Hub Operating Cost %" val={Math.round(S.hubOpCostPct*100)} set={v=>set("hubOpCostPct",v/100)} prefix="" suffix=" %" step={1}
-              note="Hospitality industry norm: 40–50%"/>
-            <Pv2NumInput label="Events & Programs (Yr3)" val={S.hubProgramsCAD} set={v=>set("hubProgramsCAD",v)}
-              note="Tours, events, FuturVille programming revenue"/>
-            <Pv2NumInput label="Hub Base Capex" val={S.hubCapexBase} set={v=>set("hubCapexBase",v)} step={50000}
-              note="Units + Prairie Experience Centre fit-out"/>
-          </Pv2SectBox>
-
-          <Pv2SectBox title="CLT Land-Lease — Affordable Housing" color="#7aad6e">
-            <Pv2NumInput label="Phase 2 CLT Units" val={S.cltUnitsP2} set={v=>set("cltUnitsP2",v)} prefix="" suffix=" units" step={1}
-              note="~20% of Phase 2 lots held as CLT affordable"/>
-            <Pv2NumInput label="Phase 2 Monthly Rate" val={S.cltRateP2} set={v=>set("cltRateP2",v)} suffix=" CAD/mo"
-              note="~30% below Vulcan market ($1,250–$1,400/mo)"/>
-            <Pv2NumInput label="Phase 3 CLT Units" val={S.cltUnitsP3} set={v=>set("cltUnitsP3",v)} prefix="" suffix=" units" step={1}/>
-            <Pv2NumInput label="Phase 3 Monthly Rate" val={S.cltRateP3} set={v=>set("cltRateP3",v)} suffix=" CAD/mo"/>
-          </Pv2SectBox>
-
-          <Pv2SectBox title="Lot Sales" color="#9f6a4a">
-            <Pv2NumInput label="Phase 2 Total Lots" val={S.lotsP2} set={v=>set("lotsP2",v)} prefix="" suffix=" lots" step={1}
-              note="Golf Edge + East Stewardship clusters"/>
-            <Pv2NumInput label="Phase 2 Price / Lot" val={S.lotPriceP2} set={v=>set("lotPriceP2",v)} step={5000}
-              note="Vulcan/Whispering Greens area $55K–$95K + ~$17K regen premium"/>
-            <Pv2NumInput label="Phase 2 Absorption Rate" val={S.absP2} set={v=>set("absP2",v)} prefix="" suffix=" lots/yr" step={1}
-              note="~5 yr to absorb 68 lots; conservative for rural AB"/>
-            <Pv2NumInput label="Phase 2 Lot Margin %" val={Math.round(S.lotMargin*100)} set={v=>set("lotMargin",v/100)} prefix="" suffix=" %" step={1}
-              note="22% after infrastructure, servicing, DA costs"/>
-            <Pv2NumInput label="Phase 3 Total Lots" val={S.lotsP3} set={v=>set("lotsP3",v)} prefix="" suffix=" lots" step={1}/>
-            <Pv2NumInput label="Phase 3 Price / Lot" val={S.lotPriceP3} set={v=>set("lotPriceP3",v)} step={5000}
-              note="Phase 3 premium: demonstrated community"/>
-            <Pv2NumInput label="Phase 3 Absorption Rate" val={S.absP3} set={v=>set("absP3",v)} prefix="" suffix=" lots/yr" step={1}/>
-          </Pv2SectBox>
-
-          <Pv2SectBox title="Other Recurring Revenue" color="#a09f6a">
-            <Pv2NumInput label="Community Energy Coop (Yr3 net)" val={S.energyCoopCAD} set={v=>set("energyCoopCAD",v)}
-              note="180K kWh × $0.14 − operating costs"/>
-            <Pv2NumInput label="Market Hall & Kitchen (Yr3)" val={S.marketHallCAD} set={v=>set("marketHallCAD",v)}
-              note="Vendor fees, kitchen rentals, events"/>
-            <Pv2NumInput label="FuturVille IP Licensing (Yr3)" val={S.futurvilleCAD} set={v=>set("futurvilleCAD",v)}
-              note="Village #1 design + governance IP — Angela's platform"/>
-          </Pv2SectBox>
-        </div>
-
-        {/* COL 3 */}
-        <div>
-          <Pv2SectBox title="Phase Capex — Low / High Range (CAD)" color="#9f6a4a">
-            <Pv2NumInput label="Phase 0 — Low" val={S.p0Lo} set={v=>set("p0Lo",v)} step={25000} note="Story of Place · CLT formation · baselines · legal"/>
-            <Pv2NumInput label="Phase 0 — High" val={S.p0Hi} set={v=>set("p0Hi",v)} step={25000}/>
-            <Pv2NumInput label="Phase 1A — Low" val={S.p1aLo} set={v=>set("p1aLo",v)} step={25000} note="Stewardship · RCCS sensors · CLT activation"/>
-            <Pv2NumInput label="Phase 1A — High" val={S.p1aHi} set={v=>set("p1aHi",v)} step={25000}/>
-            <Pv2NumInput label="Hub Add-On — Low (conditional)" val={S.hubLo} set={v=>set("hubLo",v)} step={50000}/>
-            <Pv2NumInput label="Hub Add-On — High" val={S.hubHi} set={v=>set("hubHi",v)} step={50000}/>
-            <Pv2NumInput label="Phase 1B Servicing Spine — Low" val={S.p1bLo} set={v=>set("p1bLo",v)} step={100000} note="Road · trunk utilities · microgrid backbone"/>
-            <Pv2NumInput label="Phase 1B — High" val={S.p1bHi} set={v=>set("p1bHi",v)} step={100000}/>
-            <Pv2NumInput label="Phase 2 — Low" val={S.p2Lo} set={v=>set("p2Lo",v)} step={100000}/>
-            <Pv2NumInput label="Phase 2 — High" val={S.p2Hi} set={v=>set("p2Hi",v)} step={100000}/>
-            <Pv2NumInput label="Phase 3 — Low" val={S.p3Lo} set={v=>set("p3Lo",v)} step={100000}/>
-            <Pv2NumInput label="Phase 3 — High" val={S.p3Hi} set={v=>set("p3Hi",v)} step={100000}/>
-          </Pv2SectBox>
-
-          <Pv2SectBox title="Operating Costs & Margins" color="#c8952a">
-            <Pv2NumInput label="Phase 1A Op Cost %" val={Math.round(S.p1aOpPct*100)} set={v=>set("p1aOpPct",v/100)} prefix="" suffix=" %" step={1}
-              note="Stewardship + Hub hospitality if active"/>
-            <Pv2NumInput label="Phase 2 Op Cost %" val={Math.round(S.p2OpPct*100)} set={v=>set("p2OpPct",v/100)} prefix="" suffix=" %" step={1}/>
-            <Pv2NumInput label="Phase 3 Op Cost %" val={Math.round(S.p3OpPct*100)} set={v=>set("p3OpPct",v/100)} prefix="" suffix=" %" step={1}/>
-            <Pv2NumInput label="Lot Sales Net Margin %" val={Math.round(S.lotMargin*100)} set={v=>set("lotMargin",v/100)} prefix="" suffix=" %" step={1}
-              note="After infrastructure, servicing, DA costs"/>
-          </Pv2SectBox>
-
-          <Pv2SectBox title="PRT Capital Architecture" color="#4a8f9f">
-            <Pv2NumInput label="Total Project Investment" val={S.totalInvestCAD} set={v=>set("totalInvestCAD",v)} step={250000}
-              note="Lane A + B + C combined (CAD)"/>
-            <Pv2NumInput label="Lane A % (Land + Dev LP)" val={Math.round(S.laneAPct*100)} set={v=>set("laneAPct",v/100)} prefix="" suffix=" %" step={5}/>
-            <Pv2NumInput label="Lane B % (RCCS Rail)" val={Math.round(S.laneBPct*100)} set={v=>set("laneBPct",v/100)} prefix="" suffix=" %" step={5}/>
-            <Pv2NumInput label="Lane C % (FuturVille)" val={Math.round(S.laneCPct*100)} set={v=>set("laneCPct",v/100)} prefix="" suffix=" %" step={5}/>
-            <Pv2NumInput label="Lane A Target IRR" val={Math.round(S.laneAIRR*100)} set={v=>set("laneAIRR",v/100)} prefix="" suffix=" %" step={1}/>
-            <Pv2NumInput label="Hurdle / Preferred Return" val={Math.round(S.laneAHurdle*100)} set={v=>set("laneAHurdle",v/100)} prefix="" suffix=" %" step={1}/>
-            <Pv2NumInput label="PRT Management Fee" val={Math.round(S.mgmtFeePct*1000)/10} set={v=>set("mgmtFeePct",v/100)} prefix="" suffix=" %/yr" step={0.25}
-              note="Applied to total AUM annually"/>
-          </Pv2SectBox>
-
-          <Pv2SectBox title="Covenantal Waterfall — RCCS v2.0i" color="#7aad6e">
-            <Pv2NumInput label="CLT Reinvestment %" val={Math.round(S.wfCLTPct*100)} set={v=>set("wfCLTPct",v/100)} prefix="" suffix=" %" step={5}
-              note="Compounds locally — Life before Profits"/>
-            <Pv2NumInput label="Place Fund %" val={Math.round(S.wfPlacePct*100)} set={v=>set("wfPlacePct",v/100)} prefix="" suffix=" %" step={5}/>
-            <Pv2NumInput label="PRT Governance %" val={Math.round(S.wfPRTPct*100)} set={v=>set("wfPRTPct",v/100)} prefix="" suffix=" %" step={5}/>
-            <Pv2NumInput label="Investor Distributions %" val={Math.round(S.wfInvPct*100)} set={v=>set("wfInvPct",v/100)} prefix="" suffix=" %" step={5}/>
-          </Pv2SectBox>
-
-          <Pv2SectBox title="Five Capitals Baseline Scores (0–10)" color="#7aad6e">
-            {PV2_CAPS.map(c=>(
-              <Pv2NumInput key={c.key} label={`${c.icon} ${c.key}`}
-                val={S[`base${c.key}`]} set={v=>set(`base${c.key}`,pvClamp(Number(v),0,10))}
-                prefix="" step={0.5} note={c.desc}/>
-            ))}
-          </Pv2SectBox>
-        </div>
-      </div>
-
-      {/* ── References Panel ── */}
-      <PvRefPanel/>
-
-      <div style={{borderTop:"1px solid #2d4028",marginTop:20,paddingTop:14,
-        display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:10}}>
-        <div style={{fontSize:10,color:"#6a7a62",maxWidth:560}}>
-          Auto-saved to Supabase · All values CAD · Sources: RCCS v2.0i S1, PRT Exec Sum v1.7,
-          Alberta TIER/ClearBlue Markets 2025–26, Hipcamp AB 2025/26, Vulcan MLS® 2024–25, Epcor AB 2025
-        </div>
-        <div style={{display:"flex",gap:10}}>
-          <button onClick={()=>setS(PV2_DEFAULTS)}
-            style={{padding:"7px 14px",borderRadius:6,border:"1px solid #c0392b",
-              background:"transparent",color:"#c0392b",cursor:"pointer",fontSize:11}}>Reset Defaults</button>
-          <button onClick={onClose}
-            style={{padding:"7px 18px",borderRadius:6,border:"1px solid #c8952a",
-              background:"#c8952a20",color:"#c8952a",cursor:"pointer",fontWeight:700,fontSize:12}}>Save & Return →</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── MAIN FINANCE MODEL ──────────────────────────────────────────────────────
-function FinanceModel() {
-  const [S, setS]           = React.useState(PV2_DEFAULTS);
-  const [loaded, setLoaded] = React.useState(false);
-  const [view, setView]     = React.useState("model"); // "model" | "settings"
-  const [phases, setPhases] = React.useState({ p0:true, p1a:false, p2:false, p3:false });
-  const [hub, setHub]       = React.useState(false);
-  const [scenario, setScenario] = React.useState("mid");
-  const [capexV, setCapexV] = React.useState(0.5);
-  const [carbon, setCarbon] = React.useState("tier");
-  const [flash, setFlash]   = React.useState(false);
-  const saveRef = React.useRef(null);
-
-  // Load from Supabase on mount
-  React.useEffect(()=>{(async()=>{
-    const sv = await pv2Get(PV2_SK_SETTINGS, null);
-    const ss = await pv2Get(PV2_SK_SESSION, null);
-    if(sv) setS({...PV2_DEFAULTS,...sv});
-    if(ss){
-      if(ss.phases) setPhases(ss.phases);
-      if(ss.hub!==undefined) setHub(ss.hub);
-      if(ss.scenario) setScenario(ss.scenario);
-      if(ss.capexV!==undefined) setCapexV(ss.capexV);
-      if(ss.carbon) setCarbon(ss.carbon);
-    }
-    setLoaded(true);
-  })();},[]);
-
-  // Auto-save (debounced 900ms)
-  React.useEffect(()=>{
-    if(!loaded) return;
-    if(saveRef.current) clearTimeout(saveRef.current);
-    saveRef.current = setTimeout(async()=>{
-      await pv2Set(PV2_SK_SETTINGS, S);
-      await pv2Set(PV2_SK_SESSION, { phases, hub, scenario, capexV, carbon });
-      setFlash(true); setTimeout(()=>setFlash(false), 1800);
-    }, 900);
-  },[phases, hub, scenario, capexV, carbon, S, loaded]);
-
-  // ─── CALCULATIONS ─────────────────────────────────────────────────────────
-  const calc = React.useMemo(()=>{
-    const carbonPrice = { tier:S.carbonPriceTIER, mou:S.carbonPriceMOU, verra:S.carbonPriceVerra }[carbon];
-    const rM = { low:0.35, mid:0.55, high:0.80 }[scenario];  // yr1 ramp multiplier
-    const fM = { low:0.65, mid:1.00, high:1.30 }[scenario];  // yr3 full multiplier
-    const lerp = (lo,hi) => lo + (hi-lo)*capexV;
-
-    // Capex
-    const p0Cap  = phases.p0  ? lerp(S.p0Lo, S.p0Hi) : 0;
-    const p1aCap = phases.p1a ? lerp(S.p1aLo, S.p1aHi) + (hub ? lerp(S.hubLo,S.hubHi) : 0) : 0;
-    const p1bCap = (phases.p2||phases.p3) ? lerp(S.p1bLo, S.p1bHi) : 0;
-    const p2Cap  = phases.p2  ? lerp(S.p2Lo, S.p2Hi) : 0;
-    const p3Cap  = phases.p3  ? lerp(S.p3Lo, S.p3Hi) : 0;
-    const totCap = p0Cap + p1aCap + p1bCap + p2Cap + p3Cap;
-
-    // Revenue streams
-    const ncuGrossYr3 = S.restorationAcres * S.carbonTonnesPerAcre * carbonPrice;
-    const ncuMonitor  = S.monitoringCostPerHa * S.restorationAcres * 0.405; // ac→ha
-    const ncu3 = Math.max(0, ncuGrossYr3*(1-S.communityDividendPct) - ncuMonitor) * fM;
-    const hcu3 = S.hcuParticipantsYr3 * S.hcuRevenuePerPart * fM;
-    const scu3 = S.scuAnnualRevCAD * fM;
-    const mcu3 = S.mcuKwhPerYear * S.mcuRateCAD * 0.5 * fM; // 50% MCU credit recognition
-
-    const hubGr3 = phases.p1a && hub ? (S.hubUnits * S.hubADR * 365 * S.hubOccupancy + S.hubProgramsCAD) * fM : 0;
-    const hubGr1 = phases.p1a && hub ? (S.hubUnits * S.hubADR * 365 * S.hubOccupancy * 0.4 + S.hubProgramsCAD * 0.3) * rM : 0;
-
-    const lots2yr1 = phases.p2 ? S.absP2 * S.lotPriceP2 * rM : 0;
-    const lots2yr3 = phases.p2 ? S.absP2 * S.lotPriceP2 * fM : 0;
-    const clt2yr1  = phases.p2 ? S.cltUnitsP2 * S.cltRateP2 * 12 * rM * 0.5 : 0;
-    const clt2yr3  = phases.p2 ? S.cltUnitsP2 * S.cltRateP2 * 12 * fM : 0;
-    const engy2yr3 = phases.p2 ? S.energyCoopCAD * fM : 0;
-    const mkt2yr3  = phases.p2 ? S.marketHallCAD * fM : 0;
-    const rccs2yr3 = phases.p2 ? (ncu3 + hcu3 * 0.7 + scu3 * 0.7) : 0;
-
-    const lots3yr1 = phases.p3 ? S.absP3 * S.lotPriceP3 * rM : 0;
-    const lots3yr3 = phases.p3 ? S.absP3 * S.lotPriceP3 * fM : 0;
-    const clt3yr3  = phases.p3 ? S.cltUnitsP3 * S.cltRateP3 * 12 * fM : 0;
-    const rccs3yr3 = phases.p3 ? (ncu3 + hcu3 + scu3 + mcu3) : 0;
-    const futr3yr3 = phases.p3 ? S.futurvilleCAD * fM : 0;
-
-    // Phase 1A recurring (if active, not in P2)
-    const rccs1yr3 = phases.p1a && !phases.p2 ? (ncu3 * 0.4 + hcu3 * 0.2 + scu3 * 0.2) : 0;
-
-    const totYr1 = hubGr1 + lots2yr1 + clt2yr1 + lots3yr1;
-    const totYr3 = rccs1yr3 + hubGr3 + lots2yr3 + clt2yr3 + engy2yr3 + mkt2yr3 + rccs2yr3
-                 + lots3yr3 + clt3yr3 + rccs3yr3 + futr3yr3;
-
-    // NOI — lot sales at lotMargin; recurring at phase opPct
-    const opPct = phases.p3 ? S.p3OpPct : phases.p2 ? S.p2OpPct : S.p1aOpPct;
-    const totLots = lots2yr3 + lots3yr3;
-    const totRecur = totYr3 - totLots;
-    const noi = totRecur * (1 - opPct) + totLots * S.lotMargin;
-
-    // Lane architecture
-    const laneA = S.totalInvestCAD * S.laneAPct;
-    const laneB = S.totalInvestCAD * S.laneBPct;
-    const laneC = S.totalInvestCAD * S.laneCPct;
-    const laneARet = laneA * S.laneAIRR;
-    const mgmtFee  = S.totalInvestCAD * S.mgmtFeePct;
-
-    // Dev metrics
-    const devYield = totCap > 0 && noi > 0 ? noi / totCap : null;
-    const payback  = totCap > 0 && noi > 0 ? totCap / noi : null;
-
-    // INAV
-    const iNAVContracted = noi > 0 ? noi / 0.065 : 0; // 6.5% cap rate (regenerative premium)
-    const iNAVUplift = (rccs3yr3 + rccs2yr3) * 3.0; // uncontracted RCCS × 3× premium (INAV only)
-
-    // Waterfall
-    const hurdle = laneA * S.laneAHurdle;
-    const surplus = Math.max(0, noi - hurdle);
-    const wfCLT   = surplus * S.wfCLTPct;
-    const wfPlace = surplus * S.wfPlacePct;
-    const wfPRT   = surplus * S.wfPRTPct;
-    const wfInv   = surplus * S.wfInvPct;
-
-    // Five Capitals
-    const deltas = { Natural:0, Human:0, Social:0, Manufactured:0, Financial:0 };
-    const addDelta = (key, scale=1) => { PV2_CAPS.forEach(c=>{ deltas[c.key] += (PV2_DELTAS[key][c.key]||0)*scale; }); };
-    if(phases.p1a){ addDelta("rccs_ncu",0.4); addDelta("rccs_hcu",0.3); addDelta("rccs_scu",0.3); if(hub)addDelta("hub"); }
-    if(phases.p2){ addDelta("lots"); addDelta("clt"); addDelta("energy"); addDelta("market"); addDelta("rccs_ncu",0.3); addDelta("rccs_hcu",0.4); addDelta("rccs_scu",0.4); }
-    if(phases.p3){ addDelta("lots",0.5); addDelta("clt",0.5); addDelta("rccs_mcu"); addDelta("futurville"); }
-    const scores = {};
-    PV2_CAPS.forEach(c=>{ scores[c.key] = pvClamp(S[`base${c.key}`] + deltas[c.key], 0, 10); });
-    const composite = Object.values(scores).reduce((a,b)=>a+b,0)/5;
-
-    // Stream rows for table
-    const rows = [
-      { ph:"p1a", ic:"🌿", nm:"RCCS Natural Capital (NCU)", y1:0, y3:rccs1yr3, on:phases.p1a&&!phases.p2 },
-      { ph:"p1a", ic:"🧠", nm:"RCCS Human Capital (HCU, P1A)", y1:0, y3:phases.p1a&&!phases.p2?hcu3*0.2:0, on:phases.p1a&&!phases.p2 },
-      { ph:"p1a", ic:"🏕", nm:"Hub Glamping + Programs", y1:hubGr1, y3:hubGr3, on:phases.p1a&&hub, gate:true },
-      { ph:"p2",  ic:"🏘", nm:"Lot Sales — Phase 2 (North)", y1:lots2yr1, y3:lots2yr3, on:phases.p2 },
-      { ph:"p2",  ic:"🔑", nm:"CLT Land-Lease — Phase 2", y1:clt2yr1, y3:clt2yr3, on:phases.p2 },
-      { ph:"p2",  ic:"⚡", nm:"Community Energy Cooperative", y1:0, y3:engy2yr3, on:phases.p2 },
-      { ph:"p2",  ic:"🍽", nm:"Market Hall & Community Kitchen", y1:0, y3:mkt2yr3, on:phases.p2 },
-      { ph:"p2",  ic:"📊", nm:"RCCS Portfolio — Phase 2", y1:0, y3:rccs2yr3, on:phases.p2 },
-      { ph:"p3",  ic:"🏡", nm:"Lot Sales — Phase 3 (South)", y1:lots3yr1, y3:lots3yr3, on:phases.p3 },
-      { ph:"p3",  ic:"🔑", nm:"CLT Land-Lease — Phase 3", y1:0, y3:clt3yr3, on:phases.p3 },
-      { ph:"p3",  ic:"📊", nm:"RCCS Portfolio Mature (P3)", y1:0, y3:rccs3yr3, on:phases.p3 },
-      { ph:"p3",  ic:"🌐", nm:"FuturVille IP Licensing", y1:0, y3:futr3yr3, on:phases.p3 },
-    ].filter(r=>r.on);
-
-    return {
-      p0Cap,p1aCap,p1bCap,p2Cap,p3Cap,totCap,
-      totYr1,totYr3,noi,devYield,payback,
-      laneA,laneB,laneC,laneARet,mgmtFee,
-      iNAVContracted,iNAVUplift,
-      surplus,hurdle,wfCLT,wfPlace,wfPRT,wfInv,
-      deltas,scores,composite,
-      rows,carbonPrice,
-      opPct,
-    };
-  },[phases,hub,scenario,capexV,carbon,S]);
-
-  const anyRev = (phases.p1a||phases.p2||phases.p3);
-  const phC = { p0:"#c8952a", p1a:"#7aad6e", p2:"#4a8f9f", p3:"#9f6a4a" };
-  const phD = {
-    p0:"Story of Place · CLT formation · ORRSC · RCCS baselines · Feasibility study.",
-    p1a:"Prairie restoration starts · RCCS credits accrue · Hub if feasibility gate passes.",
-    p2:"68 lots · CLT affordable units · Energy coop · Market Hall · RCCS maturing.",
-    p3:"65 lots · Full RCCS portfolio · INAV reporting · FuturVille replication.",
-  };
-
-  if(view==="settings") return <Pv2Settings S={S} setS={setS} onClose={()=>setView("model")}/>;
-
-  return(
-    <div style={{fontFamily:"Inter,system-ui,sans-serif"}}>
-
-      {/* Header */}
-      <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",
-        marginBottom:22,flexWrap:"wrap",gap:12}}>
-        <div>
-          <div style={{fontSize:11,fontFamily:"'DM Mono',monospace",color:"#c8952a",
-            letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:6}}>PRT Finance Model v2 — Gate-Triggered · CAD</div>
-          <h2 style={{fontSize:26,fontWeight:800,fontFamily:"'Cormorant Garamond',Georgia,serif",
-            color:"#d4b483",margin:"0 0 6px"}}>Prairie Vista Estates</h2>
-          <p style={{fontSize:12,color:"#8a9080",maxWidth:680,lineHeight:1.7,margin:0}}>
-            Toggle phases to model activation sequences. Each phase unlocks when readiness gates pass — not calendar dates.
-            Hub revenue is conditional on Phase 0 Feasibility Study. All in Canadian Dollars.
-          </p>
-        </div>
-        <div style={{display:"flex",gap:8,alignItems:"center",flexShrink:0}}>
-          <span style={{fontSize:9,fontFamily:"'DM Mono',monospace",
-            color:flash?"#7aad6e":"#6a7a62",transition:"color 0.5s"}}>
-            {flash?"● saved to Supabase":"○ auto-save"}
-          </span>
-          <button onClick={()=>setView("settings")}
-            style={{padding:"7px 16px",borderRadius:6,border:"1px solid #4a8f9f",
-              background:"#4a8f9f18",color:"#4a8f9f",cursor:"pointer",fontWeight:700,fontSize:11}}>
-            ⚙️ Finance Settings
-          </button>
-        </div>
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"255px 1fr 254px",gap:18}}>
-
-        {/* ── LEFT ── */}
-        <div>
-          {/* Scenario */}
-          <div style={{background:"#1c2a1a",border:"1px solid #2d4028",borderRadius:8,
-            padding:"10px 12px",marginBottom:12}}>
-            <div style={{fontSize:9,color:"#6a7a62",letterSpacing:"0.12em",textTransform:"uppercase",
-              marginBottom:8,fontWeight:600}}>Revenue Scenario</div>
-            <div style={{display:"flex",gap:4,marginBottom:12}}>
-              {[["low","Conservative"],["mid","Base Case"],["high","Upside"]].map(([k,l])=>(
-                <button key={k} onClick={()=>setScenario(k)}
-                  style={{flex:1,padding:"5px 2px",borderRadius:5,
-                    border:`1px solid ${scenario===k?"#c8952a":"#2d4028"}`,
-                    background:scenario===k?"#c8952a22":"transparent",
-                    color:scenario===k?"#c8952a":"#8a9080",fontSize:10,
-                    fontWeight:scenario===k?700:400,cursor:"pointer"}}>{l}</button>
-              ))}
-            </div>
-
-            <div style={{fontSize:9,color:"#6a7a62",letterSpacing:"0.12em",textTransform:"uppercase",
-              marginBottom:6,fontWeight:600}}>Carbon Credit Adapter</div>
-            <div style={{display:"flex",gap:3}}>
-              {[["tier",`TIER $${S.carbonPriceTIER}/t`],["mou",`MOU $${S.carbonPriceMOU}/t`],["verra",`Verra $${S.carbonPriceVerra}/t`]].map(([k,l])=>(
-                <button key={k} onClick={()=>setCarbon(k)}
-                  style={{flex:1,padding:"4px 1px",borderRadius:5,
-                    border:`1px solid ${carbon===k?"#7aad6e":"#2d4028"}`,
-                    background:carbon===k?"#7aad6e18":"transparent",
-                    color:carbon===k?"#7aad6e":"#8a9080",fontSize:9,
-                    fontWeight:carbon===k?700:400,cursor:"pointer"}}>{l}</button>
-              ))}
-            </div>
-          </div>
-
-          {/* Hub gate toggle */}
-          <div style={{background:hub?"#162114":"#1a1a0e",
-            border:`1px solid ${hub?"#7aad6e50":"#c8952a50"}`,
-            borderRadius:8,padding:"10px 12px",marginBottom:12,cursor:"pointer"}}
-            onClick={()=>setHub(!hub)}>
-            <div style={{display:"flex",gap:8,alignItems:"flex-start"}}>
-              <div style={{width:14,height:14,borderRadius:3,border:`2px solid #7aad6e`,
-                background:hub?"#7aad6e":"transparent",flexShrink:0,marginTop:1,
-                display:"flex",alignItems:"center",justifyContent:"center"}}>
-                {hub&&<span style={{fontSize:9,color:"#0f1a0e",fontWeight:900,lineHeight:1}}>✓</span>}
-              </div>
-              <div>
-                <div style={{fontSize:11,fontWeight:700,color:hub?"#7aad6e":"#c8952a",marginBottom:3}}>
-                  🏕 Hub Feasibility Gate
-                </div>
-                <div style={{fontSize:9,color:"#6a7a62",lineHeight:1.5}}>
-                  {hub
-                    ? `${S.hubUnits} units × $${S.hubADR}/nt × ${Math.round(S.hubOccupancy*100)}% occ · Gate confirmed`
-                    : "OFF = stewardship-only. Phase 0 feasibility study required to unlock."}
-                </div>
-              </div>
-            </div>
-            {hub&&<div style={{marginTop:8,padding:"5px 8px",background:"#0f1a0e",borderRadius:4,
-              fontSize:10,color:"#7aad6e",fontFamily:"'DM Mono',monospace"}}>
-              Yr3: {fCD(S.hubUnits*S.hubADR*365*S.hubOccupancy)} gross + {fCD(S.hubProgramsCAD)} programs
-            </div>}
-          </div>
-
-          {/* Phase toggles */}
-          {Object.entries({p0:"Phase 0 — Alignment",p1a:"Phase 1A — Stewardship",p2:"Phase 2 — North Nbhds",p3:"Phase 3 — South Nbhds"}).map(([pid,pname])=>{
-            const on=phases[pid]; const pc=phC[pid];
-            return(
-              <div key={pid} style={{marginBottom:8}}>
-                <div onClick={()=>setPhases(p=>({...p,[pid]:!p[pid]}))}
-                  style={{display:"flex",alignItems:"flex-start",gap:8,width:"100%",
-                    padding:"8px 10px",borderRadius:7,border:`2px solid ${on?pc:"#2d4028"}`,
-                    background:on?`${pc}12`:"#1c2a1a",cursor:"pointer"}}>
-                  <div style={{width:14,height:14,borderRadius:3,border:`2px solid ${pc}`,
-                    background:on?pc:"transparent",flexShrink:0,marginTop:1,
-                    display:"flex",alignItems:"center",justifyContent:"center"}}>
-                    {on&&<span style={{fontSize:9,color:"#0f1a0e",fontWeight:900,lineHeight:1}}>✓</span>}
-                  </div>
-                  <div style={{flex:1}}>
-                    <div style={{fontSize:11,fontWeight:700,color:on?pc:"#c8b483"}}>{pname}</div>
-                    <div style={{fontSize:9,color:"#6a7a62",lineHeight:1.4,marginTop:2}}>{phD[pid]}</div>
-                  </div>
-                </div>
-              </div>
-            );
-          })}
-
-          {/* Capex slider */}
-          <div style={{marginTop:12,borderTop:"1px solid #2d4028",paddingTop:12}}>
-            <Pv2Slider label="Capex Assumption" val={capexV} set={setCapexV}
-              min={0} max={1} step={0.1} color="#9f6a4a"
-              fmt={v=>v===0?"← Low":v===1?"High →":"Mid"}
-              sub="Slides between Lo/Hi capex for all phases"/>
-          </div>
-          <button onClick={()=>setView("settings")}
-            style={{width:"100%",marginTop:10,padding:"7px",borderRadius:6,
-              border:"1px solid #4a8f9f40",background:"transparent",color:"#4a8f9f",
-              cursor:"pointer",fontSize:11}}>⚙️ Edit all defaults →</button>
-        </div>
-
-        {/* ── CENTER ── */}
-        <div>
-          {/* KPI Row 1 */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(3,1fr)",gap:8,marginBottom:8}}>
-            <Pv2Kpi label="Yr 3 Gross Revenue" value={anyRev?fCM(calc.totYr3,2):"—"} color="#c8952a" sub="All active phases · CAD"/>
-            <Pv2Kpi label="Yr 3 NOI" value={anyRev?fCM(calc.noi,2):"—"} color="#7aad6e"
-              sub={anyRev&&calc.totYr3>0?`${fPct(calc.noi/calc.totYr3)} blended margin`:""}/>
-            <Pv2Kpi label="Total Dev Capex" value={anyRev||phases.p0?fCM(calc.totCap,1):"—"} color="#9f6a4a" sub={capexV===0?"Low estimate":capexV===1?"High estimate":"Mid estimate"}/>
-          </div>
-          {/* KPI Row 2 */}
-          <div style={{display:"grid",gridTemplateColumns:"repeat(4,1fr)",gap:8,marginBottom:12}}>
-            <Pv2Kpi label="Dev Yield on Capex" value={calc.devYield?fPct(calc.devYield):"N/A"} color="#c8b483"
-              sub={calc.payback?`${fYr(calc.payback)} payback`:""}/>
-            <Pv2Kpi label="Lane A Annual Return" value={fCM(calc.laneARet,2)} color="#7aad6e"
-              sub={`${fPct(S.laneAIRR)} on ${fCM(calc.laneA,1)} CAD`}/>
-            <Pv2Kpi label="INAV (Contracted)" value={anyRev?fCM(calc.iNAVContracted,1):"—"} color="#4a8f9f"
-              sub="6.5% cap rate · NAV-grade"/>
-            <Pv2Kpi label="Mgmt Fee / yr" value={fCK(calc.mgmtFee)} color="#a09f6a"
-              sub={`${fPct(S.mgmtFeePct)} on ${fCM(S.totalInvestCAD,1)}`}/>
-          </div>
-
-          {/* Capex breakdown */}
-          <div style={{background:"#1c2a1a",border:"1px solid #2d4028",borderRadius:9,
-            padding:"12px 14px",marginBottom:12}}>
-            <div style={{fontSize:10,fontWeight:700,color:"#c8b483",marginBottom:10}}>
-              📐 Phase Capex — {capexV===0?"Low":capexV===1?"High":"Mid"} Assumption (CAD)
-            </div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(5,1fr)",gap:6}}>
-              {[
-                {pid:"p0", lbl:"P0 Align", cap:calc.p0Cap, note:"Foundation"},
-                {pid:"p1a",lbl:"P1A Stew.", cap:calc.p1aCap, note:hub?"incl. Hub":"Hub excl."},
-                {pid:"p1b",lbl:"P1B Serv.", cap:calc.p1bCap, note:"Road+utilities"},
-                {pid:"p2", lbl:"P2 North", cap:calc.p2Cap,  note:"68 lots"},
-                {pid:"p3", lbl:"P3 South", cap:calc.p3Cap,  note:"65 lots"},
-              ].map(({pid,lbl,cap,note})=>{
-                const on = pid==="p0"?phases.p0 : pid==="p1b"?(phases.p2||phases.p3) : phases[pid];
-                const pc = phC[pid]||"#c8952a";
-                return(
-                  <div key={pid} style={{background:on?"#162114":"#0f1a0e",
-                    border:`1px solid ${on?"#2d4028":"#1a2418"}`,borderRadius:6,
-                    padding:"8px 7px",opacity:on?1:0.35,textAlign:"center"}}>
-                    <div style={{fontSize:9,color:pc,fontWeight:700,marginBottom:3}}>{lbl}</div>
-                    <div style={{fontSize:12,fontWeight:800,color:"#c8b483",fontFamily:"'DM Mono',monospace"}}>
-                      {on?fCD(cap):"—"}</div>
-                    <div style={{fontSize:8,color:"#6a7a62",marginTop:2}}>{note}</div>
-                  </div>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Stream table */}
-          {anyRev && calc.rows.length>0 && (
-            <div style={{background:"#1c2a1a",border:"1px solid #2d4028",borderRadius:9,
-              padding:"11px 12px",marginBottom:12}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 68px 88px 78px",gap:4,
-                padding:"0 6px 7px",borderBottom:"1px solid #2d4028"}}>
-                {["Revenue Stream","Yr 1 (ramp)","Yr 3 Gross","Yr 3 NOI"].map(h=>(
-                  <div key={h} style={{fontSize:8,color:"#6a7a62",textTransform:"uppercase",
-                    letterSpacing:"0.08em",textAlign:h.startsWith("R")?"left":"right"}}>{h}</div>
-                ))}
-              </div>
-              {["p1a","p2","p3"].map(pid=>{
-                const rows=calc.rows.filter(r=>r.ph===pid);
-                if(!rows.length) return null;
-                const pc = phC[pid];
-                const opP = pid==="p1a"?S.p1aOpPct:pid==="p2"?S.p2OpPct:S.p3OpPct;
-                return(
-                  <div key={pid} style={{marginBottom:8}}>
-                    <div style={{fontSize:8,color:pc,fontWeight:700,letterSpacing:"0.1em",
-                      textTransform:"uppercase",padding:"4px 6px 2px"}}>
-                      {pid==="p1a"?"Phase 1A":pid==="p2"?"Phase 2":"Phase 3"}
-                    </div>
-                    {rows.map((r,i)=>{
-                      const isLot = r.nm.includes("Lot Sales");
-                      const noi3 = r.y3 * (isLot ? S.lotMargin : (1-opP));
-                      return(
-                        <div key={i} style={{display:"grid",gridTemplateColumns:"1fr 68px 88px 78px",
-                          gap:4,padding:"3px 6px",borderRadius:4,background:"#162114",
-                          marginBottom:2,borderLeft:`3px solid ${pc}`}}>
-                          <div style={{display:"flex",gap:4,alignItems:"center",overflow:"hidden"}}>
-                            <span style={{fontSize:11,flexShrink:0}}>{r.ic}</span>
-                            <span style={{fontSize:9,color:"#c8b483",overflow:"hidden",
-                              textOverflow:"ellipsis",whiteSpace:"nowrap"}}>{r.nm}</span>
-                            {r.gate&&<span style={{fontSize:8,color:"#c8952a",
-                              background:"#c8952a20",borderRadius:3,padding:"1px 4px",flexShrink:0}}>gate</span>}
-                          </div>
-                          <div style={{fontSize:10,fontFamily:"'DM Mono',monospace",textAlign:"right",
-                            color:r.y1>0?"#c8b483":"#6a7a62"}}>{r.y1>0?fCD(r.y1):"—"}</div>
-                          <div style={{fontSize:10,fontFamily:"'DM Mono',monospace",textAlign:"right",
-                            color:r.y3>0?pc:"#6a7a62",fontWeight:r.y3>0?700:400}}>
-                            {r.y3>0?fCD(r.y3):"—"}</div>
-                          <div style={{fontSize:10,fontFamily:"'DM Mono',monospace",textAlign:"right",
-                            color:r.y3>0?"#7aad6e":"#6a7a62"}}>{r.y3>0?fCD(noi3):"—"}</div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                );
-              })}
-              <div style={{display:"grid",gridTemplateColumns:"1fr 68px 88px 78px",gap:4,
-                padding:"7px 6px 2px",borderTop:"1px solid #2d4028"}}>
-                <div style={{fontSize:11,fontWeight:700,color:"#c8b483"}}>Total (Active Phases)</div>
-                <div style={{fontSize:11,fontWeight:800,fontFamily:"'DM Mono',monospace",
-                  color:"#c8b483",textAlign:"right"}}>{fCD(calc.totYr1)}</div>
-                <div style={{fontSize:11,fontWeight:800,fontFamily:"'DM Mono',monospace",
-                  color:"#c8952a",textAlign:"right"}}>{fCD(calc.totYr3)}</div>
-                <div style={{fontSize:11,fontWeight:800,fontFamily:"'DM Mono',monospace",
-                  color:"#7aad6e",textAlign:"right"}}>{fCD(calc.noi)}</div>
-              </div>
-            </div>
-          )}
-
-          {/* INAV + Waterfall */}
-          {anyRev && calc.surplus > 0 && (
-            <div style={{background:"#1c2a1a",border:"1px solid #4a8f9f40",borderRadius:9,
-              padding:"12px 14px"}}>
-              <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:14}}>
-                {/* INAV */}
-                <div>
-                  <div style={{fontSize:9,color:"#4a8f9f",fontWeight:700,letterSpacing:"0.1em",
-                    textTransform:"uppercase",marginBottom:8}}>INAV — Dual-Lens Reporting</div>
-                  <div style={{marginBottom:8}}>
-                    <div style={{fontSize:9,color:"#6a7a62",marginBottom:2}}>Base NAV (contracted rev @ 6.5% cap)</div>
-                    <div style={{fontSize:17,fontWeight:800,color:"#4a8f9f",fontFamily:"'DM Mono',monospace"}}>{fCM(calc.iNAVContracted,1)}</div>
-                  </div>
-                  <div style={{marginBottom:8,paddingTop:6,borderTop:"1px solid #2d4028"}}>
-                    <div style={{fontSize:9,color:"#6a7a62",marginBottom:2}}>+ INAV Uplift (uncontracted RCCS × 3×)</div>
-                    <div style={{fontSize:14,fontWeight:700,color:"#7aad6e",fontFamily:"'DM Mono',monospace"}}>+{fCM(calc.iNAVUplift,1)}</div>
-                    <div style={{fontSize:9,color:"#6a7a62",marginTop:2}}>Verified but unsold · INAV only, not NAV</div>
-                  </div>
-                  <div style={{paddingTop:6,borderTop:"1px solid #2d4028"}}>
-                    <div style={{fontSize:9,color:"#4a8f9f",fontWeight:700}}>Total INAV</div>
-                    <div style={{fontSize:21,fontWeight:900,color:"#4a8f9f",fontFamily:"'DM Mono',monospace"}}>
-                      {fCM(calc.iNAVContracted+calc.iNAVUplift,1)}</div>
-                    <div style={{fontSize:9,color:"#6a7a62",marginTop:2}}>Per RCCS v2.0i S1 dual-lens method · Illustrative</div>
-                  </div>
-                </div>
-                {/* Waterfall */}
-                <div>
-                  <div style={{fontSize:9,color:"#7aad6e",fontWeight:700,letterSpacing:"0.1em",
-                    textTransform:"uppercase",marginBottom:8}}>Covenantal Waterfall — RCCS v2.0i</div>
-                  <div style={{fontSize:9,color:"#6a7a62",marginBottom:8}}>
-                    Surplus over {fPct(S.laneAHurdle)} hurdle:{" "}
-                    <span style={{color:"#c8952a",fontFamily:"'DM Mono',monospace",fontWeight:700}}>
-                      {fCD(calc.surplus)}</span>
-                  </div>
-                  {[
-                    {lbl:"CLT Reinvestment",v:calc.wfCLT,p:S.wfCLTPct,c:"#7aad6e",note:"Local compounding"},
-                    {lbl:"Place Fund",v:calc.wfPlace,p:S.wfPlacePct,c:"#4a8f9f"},
-                    {lbl:"PRT Governance",v:calc.wfPRT,p:S.wfPRTPct,c:"#c8952a"},
-                    {lbl:"Investor Dist.",v:calc.wfInv,p:S.wfInvPct,c:"#a09f6a",note:"Lane A holders"},
-                  ].map(w=>(
-                    <div key={w.lbl} style={{display:"flex",justifyContent:"space-between",
-                      alignItems:"center",marginBottom:5,padding:"3px 0",borderBottom:"1px solid #2d4028"}}>
-                      <div style={{display:"flex",gap:6,alignItems:"center"}}>
-                        <div style={{width:3,height:12,borderRadius:2,background:w.c,flexShrink:0}}/>
-                        <div>
-                          <span style={{fontSize:10,color:"#c8b483"}}>{w.lbl}</span>
-                          {w.note&&<span style={{fontSize:9,color:"#6a7a62",marginLeft:5}}>{w.note}</span>}
-                        </div>
-                      </div>
-                      <div style={{textAlign:"right"}}>
-                        <span style={{fontSize:10,fontFamily:"'DM Mono',monospace",color:w.c,fontWeight:700}}>{fCD(w.v)}</span>
-                        <span style={{fontSize:9,color:"#6a7a62",marginLeft:5}}>({fPct(w.p)})</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          )}
-
-          {!anyRev&&(
-            <div style={{textAlign:"center",padding:"60px 20px",color:"#6a7a62"}}>
-              <div style={{fontSize:32,marginBottom:10}}>☐</div>
-              <div style={{fontSize:14,marginBottom:8,color:"#8a9080"}}>Activate phases in the left panel to run the model</div>
-              <div style={{fontSize:11}}>Start with Phase 0 + Phase 1A for a stewardship-only view.</div>
-            </div>
-          )}
-        </div>
-
-        {/* ── RIGHT ── */}
-        <div>
-          <div style={{fontSize:9,color:"#6a7a62",letterSpacing:"0.12em",textTransform:"uppercase",
-            marginBottom:12,fontWeight:600}}>Five Capitals — Live Scoring</div>
-          {PV2_CAPS.map(cap=>(
-            <Pv2CapBar key={cap.key} cap={cap}
-              score={anyRev?calc.scores[cap.key]:S[`base${cap.key}`]}
-              delta={anyRev?calc.deltas[cap.key]:0}/>
-          ))}
-          {anyRev&&(
-            <div style={{background:"#1c2a1a",border:"1px solid #c8952a40",borderRadius:7,
-              padding:"10px",marginTop:6,textAlign:"center"}}>
-              <div style={{fontSize:8,color:"#c8952a",letterSpacing:"0.12em",textTransform:"uppercase",marginBottom:4}}>
-                Five Capitals Composite
-              </div>
-              <div style={{fontSize:24,fontWeight:900,color:"#c8952a",fontFamily:"'DM Mono',monospace"}}>
-                {calc.composite.toFixed(1)}<span style={{fontSize:12,fontWeight:400}}>/10</span>
-              </div>
-            </div>
-          )}
-
-          {/* Lane Architecture */}
-          <div style={{marginTop:16}}>
-            <div style={{fontSize:9,color:"#6a7a62",letterSpacing:"0.12em",textTransform:"uppercase",
-              marginBottom:10,fontWeight:600}}>PRT Lane Architecture</div>
-            {[
-              { lane:"Lane A", icon:"🏘", color:"#9f6a4a", title:"Land + Development LP",
-                items:[`${fCM(calc.laneA,1)} (${fPct(S.laneAPct)})`,`${fPct(S.laneAIRR)} IRR · ${fPct(S.laneAHurdle)} hurdle`,`${fCM(calc.laneARet,2)}/yr annual return`]},
-              { lane:"Lane B", icon:"🌿", color:"#7aad6e", title:"RCCS Credit Rail",
-                items:[`${fCM(calc.laneB,1)} (${fPct(S.laneBPct)})`,`AB TIER · Verra VCS adapters`,`10% community dividend (RCCS S1)`]},
-              { lane:"Lane C", icon:"🌐", color:"#4a8f9f", title:"FuturVille Platform",
-                items:[`${fCM(calc.laneC,1)} (${fPct(S.laneCPct)})`,`Village #1 design + governance IP`,"Angela's platform — Lane C asset"]},
-            ].map(l=>(
-              <div key={l.lane} style={{background:"#1c2a1a",border:`1px solid ${l.color}40`,
-                borderLeft:`3px solid ${l.color}`,borderRadius:7,padding:"9px 11px",marginBottom:8}}>
-                <div style={{display:"flex",gap:6,alignItems:"center",marginBottom:6}}>
-                  <span style={{fontSize:14}}>{l.icon}</span>
-                  <div>
-                    <div style={{fontSize:9,color:l.color,fontFamily:"'DM Mono',monospace",fontWeight:700}}>{l.lane}</div>
-                    <div style={{fontSize:11,fontWeight:700,color:"#c8b483"}}>{l.title}</div>
-                  </div>
-                </div>
-                {l.items.map((item,i)=>(
-                  <div key={i} style={{display:"flex",gap:6,marginBottom:3}}>
-                    <span style={{color:l.color,fontSize:10,flexShrink:0}}>›</span>
-                    <span style={{fontSize:10,color:"#8a9080",lineHeight:1.4}}>{item}</span>
-                  </div>
-                ))}
-              </div>
-            ))}
-          </div>
-
-          {/* RCCS Formula */}
-          <div style={{background:"#1c2a1a",border:"1px solid #2d4028",borderRadius:7,
-            padding:"10px 12px",marginTop:4}}>
-            <div style={{fontSize:9,color:"#7aad6e",fontWeight:700,letterSpacing:"0.1em",
-              textTransform:"uppercase",marginBottom:6}}>RCCS Issuance Kernel — v2.0i S1</div>
-            <div style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#c8b483",
-              background:"#0f1a0e",borderRadius:5,padding:"7px 10px",marginBottom:7}}>
-              Q = ΔI × v<sup>α</sup> × a<sup>β</sup> × P × S × (1−U)
-            </div>
-            {[
-              ["ΔI","Integrity Delta — verified improvement from baseline"],
-              ["v / a","Velocity & Acceleration — rate + persistence of gain"],
-              ["P","Permanence — conservation easement durability"],
-              ["S","Stewardship — FPIC binary gate (cannot be partial)"],
-              ["U","Uncertainty discount — scientific conservatism"],
-            ].map(([sym,desc])=>(
-              <div key={sym} style={{display:"flex",gap:7,marginBottom:4}}>
-                <span style={{fontFamily:"'DM Mono',monospace",fontSize:10,color:"#c8952a",
-                  fontWeight:700,minWidth:30,flexShrink:0}}>{sym}</span>
-                <span style={{fontSize:9,color:"#6a7a62",lineHeight:1.5}}>{desc}</span>
-              </div>
-            ))}
-          </div>
-
-          <div style={{marginTop:10,padding:"9px 11px",background:"#1a1a0e",
-            border:"1px solid #c8952a25",borderRadius:7}}>
-            <div style={{fontSize:9,color:"#c8952a",fontWeight:700,marginBottom:3}}>⚠ Illustrative Model · CAD</div>
-            <div style={{fontSize:9,color:"#6a7a62",lineHeight:1.6}}>
-              Planning purposes only. Not investment advice. Carbon prices: ClearBlue Markets/ICAP Nov–Dec 2025.
-              Glamping ADR: Hipcamp AB 2025/26. Lots: Vulcan MLS® 2024–25. Energy: Epcor AB 2025.
-              Phase 0 Feasibility Study produces verified numbers.
-            </div>
-          </div>
-        </div>
-
-      </div>
-    </div>
-  );
-}
 export default function App() {
   const [tab, setTab] = useState("diagnosis");
   const [openFail, setOpenFail] = useState(null);
@@ -2205,13 +752,13 @@ export default function App() {
   const [compareMode, setCompareMode] = useState("housing");
 
   const tabs = [
+    { id: "status", label: "📋 Status" },
     { id: "diagnosis", label: "🔴 Diagnosis" },
     { id: "model", label: "🌱 New Model" },
     { id: "landuse", label: "🗺️ Land Use" },
     { id: "capitals", label: "⚖️ Five Capitals" },
     { id: "capital_stack", label: "💰 PRT Capital" },
     { id: "phasing", label: "📅 Phasing" },
-    { id: "finance", label: "📊 Finance Model" },
     { id: "nextsteps", label: "🚀 Next Steps" },
   ];
 
@@ -2223,22 +770,22 @@ export default function App() {
       <div className="app">
         {/* HERO */}
         <div className="hero">
-          <div className="hero-tag">PRT · REGEN-MODE · AUTHOR-MODE-DAVE</div>
+          <div className="hero-tag">FuturVille · Vulcan, Alberta · Health &amp; Longevity Village · March 2026</div>
           <h1 className="hero-title">
-            Prairie Vista <span>Reimagined</span>
+            FuturVille <span>Reimagined</span>
           </h1>
           <div className="hero-title" style={{fontSize: 'clamp(16px,2.5vw,22px)', fontWeight:400, fontStyle:'italic', color:'#d4b483', marginTop:4}}>
             From Extractive Subdivision to Regenerative Blended Community
           </div>
           <p className="hero-sub" style={{marginTop:16}}>
-            A full diagnostic of why the 2008 ASP fails — and a complete regenerative redesign for Angela Faye's 63 acres in Vulcan, Alberta. Built on PRT canon, Story of Place, Five Capitals, and RCCS architecture.
+            Official Town of Vulcan Development Update (Feb 2026): FuturVille is actively seeking investors and developing a new ASP focused on wellness-oriented design, sustainable living, and adaptable housing. This app provides the full regenerative redesign intelligence — diagnosis, capital model, phasing, and next steps.
           </p>
           <div className="hero-meta">
             <span className="meta-pill">63 acres · Vulcan, AB</span>
             <span className="meta-pill">ASP Bylaw 1358-08</span>
             <span className="meta-pill">Owner: Angela Faye</span>
             <span className="meta-pill">Framework: PRT / RDC / RCCS</span>
-            <span className="meta-pill">Feb 2026</span>
+            <span className="meta-pill">March 2026</span>
           </div>
         </div>
 
@@ -2257,17 +804,114 @@ export default function App() {
         <div className="content">
 
           {/* === DIAGNOSIS === */}
-          {tab === "diagnosis" && (
+  
+        {/* STATUS TAB */}
+        {tab === "status" && (
+          <div className="tab-content">
+
+            {/* Official Town Quote */}
+            <div className="section-title">Official Status — Town of Vulcan</div>
+            <div style={{background:"#1c2a1a", border:"2px solid #c8952a", borderRadius:12, padding:24, marginBottom:24}}>
+              <div style={{fontFamily:"'DM Mono',monospace", fontSize:10, color:"#c8952a", letterSpacing:3, textTransform:"uppercase", marginBottom:12}}>
+                Town of Vulcan Development Officer Report · Rita Hovde · 18 February 2026
+              </div>
+              <blockquote style={{fontSize:16, lineHeight:1.8, color:"#f0ede6", fontStyle:"italic", borderLeft:"3px solid #c8952a", paddingLeft:16, margin:0}}>
+                "In 2025, FuturVille acquired 63 acres of undeveloped land from the town. The land is zoned for residential use. The developer is actively seeking investors to support the creation of a forward-looking residential community focused on healthy living and long-term well-being. The original Area Structure Plan (ASP) for this site was established in 2010; however, recognizing shifts in lifestyle preferences, demographics, and housing affordability, FuturVille is in the process of developing a new ASP. This updated plan aims to reflect modern priorities, including wellness-oriented design, sustainable living, and adaptable housing solutions, ensuring the community remains relevant and attractive for current and future residents."
+              </blockquote>
+            </div>
+
+            {/* Council Motion */}
+            <div className="section-title">Council Authorization</div>
+            <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(280px,1fr))", gap:16, marginBottom:24}}>
+              {[
+                { label:"Motion", value:"2026.18", color:"#c8952a" },
+                { label:"Authorization", value:"Draw from Prairie Vista Reserve", color:"#7aad6e" },
+                { label:"Scope", value:"New ASP · Development Agreement · Marketing Assets", color:"#6b9dd4" },
+                { label:"Councillors Present", value:"Mitchell · Dunham (attended FuturVille meetings)", color:"#d4b483" },
+                { label:"Planner", value:"Kattie Schlamp · ORRSC · 403-329-1344", color:"#9fd48f" },
+                { label:"Legal Counsel", value:"North & Company (Town of Vulcan)", color:"#8a9080" },
+              ].map((item,i) => (
+                <div key={i} style={{background:"#1c2a1a", borderRadius:10, padding:16, border:`1px solid ${item.color}40`}}>
+                  <div style={{fontSize:11, color:"#7a8a72", letterSpacing:2, textTransform:"uppercase", marginBottom:6}}>{item.label}</div>
+                  <div style={{fontSize:14, fontWeight:600, color:item.color, lineHeight:1.4}}>{item.value}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Angela Bio */}
+            <div className="section-title">Angela Faye (Barnard) — Landowner & Vision Holder</div>
+            <div style={{background:"#1c2a1a", borderRadius:12, padding:24, marginBottom:24}}>
+              <div style={{display:"flex", gap:16, flexWrap:"wrap", marginBottom:16}}>
+                {["Founder, FuturVille","Vancouver, BC / Vulcan, AB","ExO Foundations Certified","Vancouver Island Ambassador — Island Innovation","Dual Canadian-Australian Citizen"].map((tag,i) => (
+                  <span key={i} style={{background:"#2d4028", borderRadius:20, padding:"4px 12px", fontSize:12, color:"#9fd48f"}}>{tag}</span>
+                ))}
+              </div>
+              <p style={{fontSize:14, color:"#d4b483", lineHeight:1.8, marginBottom:12}}>
+                Angela is the Founder of <strong style={{color:"#f0ede6"}}>FuturVille</strong> — described as "the #1 Accelerator Program &amp; Platform for Places Worth Living For." A Vulcanite returning home, her Moonshot is to empower one million property owners with tools to create unique live-work-play destinations, with a Massively Transformative Objective of facilitating the design, marketing, and business development of <strong style={{color:"#c8952a"}}>2,000 villages of the future by 2028</strong>.
+              </p>
+              <p style={{fontSize:14, color:"#7a8a72", lineHeight:1.8, marginBottom:12}}>
+                Angela has previously built and sold award-winning commercial buildings and businesses on Vancouver Island, advancing a vision of Vancouver Island as "Sustainability Capital of the World." She holds ExO (Exponential Organizations) Foundations certification and serves as Vancouver Island Ambassador for Island Innovation — the world's most diverse social impact network for island-based sustainability. She is a collaborator for Canada's #1 podcast for entrepreneurs and has been nominated for the Nanaimo Women of Influence Awards (STEM category).
+              </p>
+              <p style={{fontSize:14, color:"#7a8a72", lineHeight:1.8}}>
+                In 2025, FuturVille acquired the 63-acre parcel from the Town of Vulcan. Angela is the <strong style={{color:"#f0ede6"}}>PRT Lane C Enabler</strong> archetype: proprietary IP, replicable models, and a global accelerator network that scales the regenerative proof-of-concept developed at FuturVille across thousands of communities.
+              </p>
+            </div>
+
+            {/* Engagement Team */}
+            <div className="section-title">Engagement Team</div>
+            <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(260px,1fr))", gap:16, marginBottom:24}}>
+              {[
+                { name:"Eric Amyot", role:"CEO & Co-Founder, Oliizoi Inc.", scope:"Engagement Lead · All Deliverables", detail:"Regenerative real estate development advisor. Vertical farming founder (400%+ YoY). Co-Founder, RegenEarth Studio. Glenwood Springs, CO.", color:"#7aad6e" },
+                { name:"Dave Ladouceur", role:"Managing Director, RDC", scope:"ASP · DA · RFP · Capital Architecture", detail:"Founder-architect of the Planetary Regenerative Trust framework. Leads ASP (a), Development Agreement (b), RFP (c) advisory through New Dimension Equity Partners.", color:"#c8952a" },
+                { name:"Mitch Rawlyk", role:"LandScope", scope:"Terrain Intelligence (d)", detail:"High-resolution terrain analysis: elevation, hydrology, slope, aspect, grassland ecology. Grounds all spatial decisions in the actual character of the FuturVille parcel.", color:"#6b9dd4" },
+                { name:"Sofya Krasnaya", role:"Ecosystem Designer", scope:"Conceptual Site Plan (e)", detail:"Regenerative landscape and site design. Translates Health & Longevity Village vision into the spatial framework for ASP integration and Council presentation.", color:"#9fd48f" },
+                { name:"Kelly Krezek", role:"New Earth Development", scope:"Regenerative Planning Partner", detail:"CEO & Co-Founder, New Earth Development. Ecological research, financial modeling, sustainability strategy, masterplanning across large-scale regenerative developments.", color:"#d4b483" },
+                { name:"Regenesis Group", role:"Service Provider", scope:"Story of Place Methodology", detail:"World-leading place-based regenerative design practitioners. IONA Island, Destination Canada. Story of Place methodology forms the ecological design backbone of the FuturVille vision.", color:"#9b59b6" },
+                { name:"Diane C. Boyd Utz / Randy Utz", role:"Legal & Construction Advisory", scope:"Development Agreement Support", detail:"Aspen Alps, King County, Elliott Ave. Legal and construction advisory supporting Development Agreement negotiation and structural provisions.", color:"#8a9080" },
+                { name:"Joshua Alvord", role:"Oliizoi Team", scope:"Local Earth Village Prototype", detail:"Local Earth Village Prototype experience. Community design and regenerative village programming.", color:"#c8952a" },
+              ].map((m,i) => (
+                <div key={i} style={{background:"#1c2a1a", borderRadius:10, padding:16, border:`1px solid ${m.color}30`}}>
+                  <div style={{fontSize:15, fontWeight:700, color:m.color, marginBottom:2}}>{m.name}</div>
+                  <div style={{fontSize:11, color:"#7a8a72", marginBottom:4}}>{m.role}</div>
+                  <div style={{fontSize:12, color:"#d4b483", marginBottom:8, fontFamily:"'DM Mono',monospace"}}>{m.scope}</div>
+                  <div style={{fontSize:12, color:"#8a9080", lineHeight:1.5}}>{m.detail}</div>
+                </div>
+              ))}
+            </div>
+
+            {/* Delivery Timeline */}
+            <div className="section-title">Confirmed Delivery Timeline</div>
+            <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:12}}>
+              {[
+                { date:"March 25, 2026", item:"Revised ASP (a)", color:"#c8952a", status:"Contracted" },
+                { date:"March 25, 2026", item:"Development Agreement (b)", color:"#c8952a", status:"Contracted" },
+                { date:"April 15, 2026", item:"Master Developer RFP (c)", color:"#7aad6e", status:"Contracted" },
+                { date:"April 15, 2026", item:"LandScope Package (d)", color:"#6b9dd4", status:"Contracted" },
+                { date:"April 15, 2026", item:"Conceptual Site Plan (e)", color:"#9fd48f", status:"Contracted" },
+                { date:"As needed", item:"Legal Review — 20 hrs (f)", color:"#d4b483", status:"Allocated" },
+                { date:"Ongoing", item:"Project Management (g) — Eric Amyot", color:"#8a9080", status:"Active" },
+              ].map((d,i) => (
+                <div key={i} style={{background:"#1c2a1a", borderRadius:8, padding:12, border:`1px solid ${d.color}40`}}>
+                  <div style={{fontSize:13, fontWeight:700, color:d.color, marginBottom:4, fontFamily:"'DM Mono',monospace"}}>{d.date}</div>
+                  <div style={{fontSize:13, color:"#f0ede6", marginBottom:4}}>{d.item}</div>
+                  <div style={{fontSize:11, color:"#7a8a72", textTransform:"uppercase", letterSpacing:1}}>{d.status}</div>
+                </div>
+              ))}
+            </div>
+
+          </div>
+        )}
+
+        {tab === "diagnosis" && (
             <div>
-              <div style={{background:"#1c2a1a",border:"1px solid #3a5a2a",borderLeft:"4px solid #c8952a",borderRadius:10,padding:"20px 24px",marginBottom:28}}>
-                <div style={{fontSize:11,fontFamily:"DM Mono,monospace",color:"#c8952a",letterSpacing:"0.15em",textTransform:"uppercase",marginBottom:8}}>Diagnostic Overview</div>
-                <p style={{fontSize:14,color:"#c8b483",lineHeight:1.85,margin:0}}>
-                  The 2008 Area Structure Plan (Bylaw 1358-08) was written for a different era and a different ambition.
-                  It segregates housing by type and income, converts productive prairie into decorative lawn, and generates wealth exactly once — on closing day — then exits.
-                  After 17 years of dormancy, the DC rezoning (Bylaw 1470-18) has already signalled that the Town expects something different.
-                  The eight structural failures documented below are not accidents of planning. They are the predictable outputs of an extraction-first model applied to land that deserves regeneration.
-                  Every one of them is correctable. The Finance Model tab shows the numbers.
-                </p>
+              <div className="verdict-banner">
+                <div className="verdict-icon">⛔</div>
+                <div className="verdict-text">
+                  <h3>The 2008 ASP Is a Blueprint for Extraction Dressed as Planning</h3>
+                  <p>
+                    Not a single design decision in this document serves community wealth, ecological health, or long-term stewardship. It is a lot-sales machine — built to subdivide, sell, and exit. After 17 years of dormancy, this is our signal to replace it entirely. The DC rezoning in 2018 was the municipality giving us permission. Let's use it.
+                  </p>
+                </div>
               </div>
 
               <div className="section-label">DIAGNOSTIC REPORT</div>
@@ -2397,7 +1041,7 @@ export default function App() {
                     <div className="compare-label-good">✅ Regenerative — LRLT + Covenants</div>
                   </div>
                   {[
-                    ["Homeowners Association with fence bylaws. That's it.", "Prairie Vista LRLT with binding stewardship covenants on all commons"],
+                    ["Homeowners Association with fence bylaws. That's it.", "FuturVille Regenerative Land Trust (LRLT) with binding stewardship covenants on all commons"],
                     ["No story of place. No ecological baseline. No cultural mapping.", "Story of Place process: watershed, ecology, history, community co-discovery"],
                     ["Town of Vulcan reviews permits case-by-case. No vision.", "ASP amendment creates regenerative DC text with community vision baked in"],
                     ["No community co-governance structure", "LRLT community board: residents, Angela, Town, ecological stewards"],
@@ -2439,7 +1083,7 @@ export default function App() {
           {tab === "model" && (
             <div>
               <div className="section-label">REGENERATIVE REDESIGN</div>
-              <div className="section-title">Prairie Vista — A Blended Living Community</div>
+              <div className="section-title">FuturVille — A Blended Living Community</div>
               <p className="section-intro">
                 The new model replaces segregated lot types with blended neighborhood clusters, dead parks with productive commons, and a one-time extraction model with a perpetual stewardship economy. Every cluster contains all housing types. Every commons generates RCCS value. The Village Heart creates a local economy that keeps money circulating in Vulcan.
               </p>
@@ -2550,7 +1194,7 @@ export default function App() {
                   { icon:"💧", name:"Wetland Bioswale Commons", desc:"Stormwater detention ponds redesigned as productive wetland commons. Native plantings, habitat, trails, community gardens adjacent. Generates RCCS NCUs and BCUs from water retention data." },
                   { icon:"☀️", name:"Solar Commons Array", desc:"Community-owned solar array on south cluster and rooftop program for all units. Residents are shareholders, not ratepayers. RCCS Built Capital Credits sold to offset grid costs." },
                   { icon:"🌱", name:"Community Garden Plots", desc:"Individual allotment garden plots allocated to every household. Shared tools, seed library, composting. Adjacent to food forest. Programs integrated with Regenity education curriculum." },
-                  { icon:"🤝", name:"Village Heart Commons", desc:"The economic heart: maker hub, food hub, co-working, FuturVille accelerator, health node, community market. Serves all of Vulcan — not just Prairie Vista. Generates RCCS Social Capital Credits." },
+                  { icon:"🤝", name:"Village Heart Commons", desc:"The economic heart: maker hub, food hub, co-working, FuturVille accelerator, health node, community market. Serves all of Vulcan — not just FuturVille. Generates RCCS Social Capital Credits." },
                 ].map((item, i) => (
                   <div key={i} className="card" style={{display:'flex', gap:14, alignItems:'flex-start'}}>
                     <div style={{fontSize:28, flexShrink:0, marginTop:2}}>{item.icon}</div>
@@ -2806,9 +1450,9 @@ export default function App() {
           {tab === "capital_stack" && (
             <div>
               <div className="section-label">CAPITAL ARCHITECTURE</div>
-              <div className="section-title">PRT Integration — Prairie Vista</div>
+              <div className="section-title">PRT Integration — FuturVille</div>
               <p className="section-intro">
-                Prairie Vista is a natural Lane A project in the PRT architecture — a regenerative real asset generating RCCS credits (Lane B) while Angela's FuturVille platform represents a Lane C enabler. Here is how the capital stack assembles.
+                FuturVille is a natural Lane A project in the PRT architecture — a regenerative real asset generating RCCS credits (Lane B) while Angela's FuturVille platform represents a Lane C enabler. Here is how the capital stack assembles.
               </p>
 
               <div className="manifesto">
@@ -2820,9 +1464,9 @@ export default function App() {
                 {
                   lane: "A", name: "Lane A — Regenerative Real Assets",
                   badge_bg: "#2d4a20", badge_color: "#7aad6e",
-                  desc: "Prairie Vista's land and built assets enter the PRT Lane A structure. Land held in the Prairie Vista LRLT with binding covenants. Operating assets (housing, Village Heart, energy, food hub) in SPVs under regenerative charters. NAV grows as the place regenerates.",
+                  desc: "FuturVille's land and built assets enter the PRT Lane A structure. Land held in the FuturVille Regenerative Land Trust (LRLT) with binding covenants. Operating assets (housing, Village Heart, energy, food hub) in SPVs under regenerative charters. NAV grows as the place regenerates.",
                   target: "$8M–$15M SPV (illustrative)", irr: "12–20%+",
-                  items: ["Prairie Vista LRLT", "Housing SPV (280 units)", "Village Heart SPV", "Community Energy SPV", "Food Commons SPV"]
+                  items: ["FuturVille Regenerative Land Trust (LRLT)", "Housing SPV (280 units)", "Village Heart SPV", "Community Energy SPV", "Food Commons SPV"]
                 },
                 {
                   lane: "B", name: "Lane B — RCCS Credit Rail",
@@ -2834,7 +1478,7 @@ export default function App() {
                 {
                   lane: "C", name: "Lane C — FuturVille as Enabler Platform",
                   badge_bg: "#3a2a10", badge_color: "#c8952a",
-                  desc: "Angela's FuturVille — '1M property owners, 2,000 villages of the future by 2028' — is a Lane C enabling platform in the PRT architecture. Prairie Vista is FuturVille's first proof-of-concept. Success here generates IP, curriculum, playbooks, and replicable models that serve the broader PRT portfolio globally.",
+                  desc: "Angela's FuturVille — '1M property owners, 2,000 villages of the future by 2028' — is a Lane C enabling platform in the PRT architecture. FuturVille is FuturVille's first proof-of-concept. Success here generates IP, curriculum, playbooks, and replicable models that serve the broader PRT portfolio globally.",
                   target: "IP + royalties + platform licensing (illustrative)", irr: "8%–20%+ (platform scale)",
                   items: ["FuturVille Accelerator (on-site)", "Place-Based Dev Curriculum", "Regenity integration", "Life AI Future City Portal", "Replication playbook"]
                 },
@@ -2871,7 +1515,7 @@ export default function App() {
               <div className="grid-2" style={{marginTop:16}}>
                 {[
                   { icon:"🏛️", label:"Provincial Housing Programs", desc:"CMHC Affordable Housing programs, Alberta Attainable Homes grants, and municipal PPP with Town of Vulcan for infrastructure cost-sharing. Direct application to affordable unit component." },
-                  { icon:"🌾", label:"Community Bond Program", desc:"Prairie Vista residents co-invest in shared infrastructure (energy microgrid, food commons, Village Heart) through community bonds. Returns paid from stewardship NOI and RCCS credit sales." },
+                  { icon:"🌾", label:"Community Bond Program", desc:"FuturVille residents co-invest in shared infrastructure (energy microgrid, food commons, Village Heart) through community bonds. Returns paid from stewardship NOI and RCCS credit sales." },
                   { icon:"🌱", label:"Catalytic / DAF Capital", desc:"PRT catalytic capital (~$10M/year across portfolio) available for Phase 0 readiness work: Story of Place, LRLT formation, RCCS baselines, infrastructure assessment. Non-dilutive, forgivable-on-performance." },
                   { icon:"🏦", label:"CDFI + Blended Finance", desc:"Mission-aligned CDFIs and blended finance structures for affordable housing component. First-loss position available to reduce private capital risk. Combined with PRT Lane A." },
                 ].map((item, i) => (
@@ -2926,10 +1570,6 @@ export default function App() {
           )}
 
           {/* === NEXT STEPS === */}
-
-          {/* ═══ FINANCE MODEL TAB ═══════════════════════════════════════════ */}
-          {tab === "finance" && <FinanceModel palette={palette} />}
-
           {tab === "nextsteps" && (
             <div>
               <div className="section-label">IMMEDIATE ACTION AGENDA</div>
@@ -2950,7 +1590,7 @@ export default function App() {
                   body:"Engage Bill Reed / Regenesis Group to run the Story of Place process with Vulcan's community. This is not a delay — it is the foundation that makes everything that follows legitimate, durable, and community-supported. It is also what differentiates this from every other developer who has walked into the Town of Vulcan. Budget 3-4 months."
                 },
                 {
-                  num:"03", title:"Register the Prairie Vista LRLT",
+                  num:"03", title:"Register the FuturVille Regenerative Land Trust (LRLT)",
                   urgent: true,
                   body:"The LRLT is the legal architecture that holds the commons in perpetuity and enables RCCS credit issuance. It also unlocks PRT Lane A investment. This is not optional. Alberta law allows for Land Trust structures — engage regenerative legal counsel familiar with Alberta's charitable land trust mechanisms."
                 },
