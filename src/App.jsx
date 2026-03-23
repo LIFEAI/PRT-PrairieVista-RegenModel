@@ -743,6 +743,45 @@ const ZONE_LABELS = {
 };
 
 
+
+// ── Vulcan Aerial Photo Component ────────────────────────────────────────────
+function VulcanPhoto() {
+  const [loaded, setLoaded] = React.useState(false);
+  const [errored, setErrored] = React.useState(false);
+  const R2_URL = "https://pub-ff9788cd4f1f494db0491a197025a94c.r2.dev/futurville/vulcan_aerial.jpg";
+
+  return (
+    <div style={{borderRadius:12, overflow:'hidden', marginBottom:24, position:'relative', minHeight:errored ? 0 : 180, background:'#162114'}}>
+      {!errored && (
+        <img
+          src={R2_URL}
+          alt="Vulcan, Alberta — aerial view"
+          onLoad={() => setLoaded(true)}
+          onError={() => setErrored(true)}
+          style={{
+            width:'100%', maxHeight:340,
+            objectFit:'cover', objectPosition:'center 40%',
+            display:'block',
+            opacity: loaded ? 1 : 0,
+            transition:'opacity 0.4s ease',
+          }}
+        />
+      )}
+      {!loaded && !errored && (
+        <div style={{position:'absolute', inset:0, display:'flex', alignItems:'center', justifyContent:'center'}}>
+          <div style={{fontSize:12, color:'#7a8a72', fontFamily:"'DM Mono',monospace", letterSpacing:2}}>LOADING IMAGE...</div>
+        </div>
+      )}
+      {loaded && (
+        <div style={{position:'absolute', bottom:0, left:0, right:0, background:'linear-gradient(transparent, rgba(15,26,14,0.88))', padding:'40px 24px 18px'}}>
+          <div style={{fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:700, color:'#f0ede6', marginBottom:4}}>Vulcan, Alberta</div>
+          <div style={{fontSize:13, color:'#d4b483', lineHeight:1.5}}>Aerial view of Vulcan's town centre. The FuturVille parcel (63 acres) sits south of town, adjacent to the Vulcan Golf & Country Club. The Rockies mark the western horizon.</div>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ── PRT 4-Phase Regenerative Real Estate Development Diagram ─────────────────
 function PhaseDiagram() {
   const [activePhase, setActivePhase] = React.useState(0);
@@ -1036,19 +1075,7 @@ export default function App() {
 
             {/* Vulcan Aerial Photo */}
             <div className="section-title" style={{marginTop:32}}>FuturVille — The Land</div>
-            <div style={{borderRadius:12, overflow:'hidden', marginBottom:24, position:'relative'}}>
-              <img
-                src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Vulcan_Alberta.jpg/1280px-Vulcan_Alberta.jpg"
-                alt="Vulcan, Alberta — aerial view"
-                loading="lazy"
-                style={{width:'100%', maxHeight:340, objectFit:'cover', objectPosition:'center 50%', display:'block'}}
-                onError={(e) => { e.target.style.display='none'; }}
-              />
-              <div style={{position:'absolute', bottom:0, left:0, right:0, background:'linear-gradient(transparent, rgba(15,26,14,0.88))', padding:'40px 24px 18px'}}>
-                <div style={{fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:700, color:'#f0ede6', marginBottom:4}}>Vulcan, Alberta</div>
-                <div style={{fontSize:13, color:'#d4b483', lineHeight:1.5}}>Vulcan, Alberta — a prairie town with deep agricultural roots, 100km south of Calgary. FuturVille's 63-acre parcel sits at the town's south edge, adjacent to the Vulcan Golf & Country Club.</div>
-              </div>
-            </div>
+            <VulcanPhoto />
 
             {/* PRT 4-Phase */}
             <div className="section-title">The PRT Regenerative Real Estate Process</div>
