@@ -123,9 +123,9 @@ const css = `
   .content { padding: 32px; max-width: 1100px; margin: 0 auto; }
 
   .verdict-banner {
-    background: linear-gradient(135deg, #2a0a08, #3d1008);
-    border: 1px solid #8a2020;
-    border-left: 4px solid #c0392b;
+    background: #1c2a1a;
+    border: 1px solid #3a4a38;
+    border-left: 4px solid #c8952a;
     border-radius: 8px;
     padding: 20px 24px;
     margin-bottom: 32px;
@@ -133,17 +133,17 @@ const css = `
     gap: 16px;
     align-items: flex-start;
   }
-  .verdict-icon { font-size: 24px; flex-shrink: 0; margin-top: 2px; }
+  .verdict-icon { font-size: 20px; flex-shrink: 0; margin-top: 2px; }
   .verdict-text h3 {
     font-family: 'Playfair Display', serif;
     font-size: 18px;
-    color: #e74c3c;
+    color: #d4b483;
     margin-bottom: 6px;
     font-weight: 700;
   }
   .verdict-text p {
     font-size: 14px;
-    color: #d4a090;
+    color: #8a9a82;
     line-height: 1.6;
   }
 
@@ -205,7 +205,7 @@ const css = `
     display: flex; align-items: center; justify-content: center;
     font-family: 'DM Mono', monospace;
     font-size: 11px;
-    color: #e74c3c;
+    color: #c8952a;
     flex-shrink: 0;
   }
   .fail-body h4 {
@@ -236,13 +236,13 @@ const css = `
     gap: 12px; margin-bottom: 12px;
   }
   .compare-label-bad {
-    background: rgba(192,57,43,0.1);
-    border: 1px solid rgba(192,57,43,0.3);
+    background: rgba(100,95,85,0.15);
+    border: 1px solid rgba(150,140,120,0.3);
     border-radius: 6px;
     padding: 10px 14px;
     font-size: 12px;
     font-weight: 600;
-    color: #e74c3c;
+    color: #8a9a82;
     display: flex; align-items: center; gap: 6px;
   }
   .compare-label-good {
@@ -893,7 +893,6 @@ export default function App() {
     { id: "model", label: "🌱 New Model" },
     { id: "landuse", label: "🗺️ Land Use" },
     { id: "capitals", label: "⚖️ Five Capitals" },
-    { id: "capital_stack", label: "💰 PRT Capital" },
     { id: "phasing", label: "📅 Phasing" },
     { id: "nextsteps", label: "🚀 Next Steps" },
   ];
@@ -1039,13 +1038,15 @@ export default function App() {
             <div className="section-title" style={{marginTop:32}}>FuturVille — The Land</div>
             <div style={{borderRadius:12, overflow:'hidden', marginBottom:24, position:'relative'}}>
               <img
-                src="https://pub-ff9788cd4f1f494db0491a197025a94c.r2.dev/futurville/vulcan_aerial.jpg"
+                src="https://upload.wikimedia.org/wikipedia/commons/thumb/f/f3/Vulcan_Alberta.jpg/1280px-Vulcan_Alberta.jpg"
                 alt="Vulcan, Alberta — aerial view"
-                style={{width:'100%', maxHeight:340, objectFit:'cover', objectPosition:'center 40%', display:'block'}}
+                loading="lazy"
+                style={{width:'100%', maxHeight:340, objectFit:'cover', objectPosition:'center 50%', display:'block'}}
+                onError={(e) => { e.target.style.display='none'; }}
               />
               <div style={{position:'absolute', bottom:0, left:0, right:0, background:'linear-gradient(transparent, rgba(15,26,14,0.88))', padding:'40px 24px 18px'}}>
                 <div style={{fontFamily:"'Playfair Display',serif", fontSize:22, fontWeight:700, color:'#f0ede6', marginBottom:4}}>Vulcan, Alberta</div>
-                <div style={{fontSize:13, color:'#d4b483', lineHeight:1.5}}>Aerial view of Vulcan's town centre. The FuturVille parcel (63 acres) sits south of town, adjacent to the Vulcan Golf & Country Club visible in the lower left. The Rockies mark the western horizon.</div>
+                <div style={{fontSize:13, color:'#d4b483', lineHeight:1.5}}>Vulcan, Alberta — a prairie town with deep agricultural roots, 100km south of Calgary. FuturVille's 63-acre parcel sits at the town's south edge, adjacent to the Vulcan Golf & Country Club.</div>
               </div>
             </div>
 
@@ -1060,7 +1061,7 @@ export default function App() {
         {tab === "diagnosis" && (
             <div>
               <div className="verdict-banner">
-                <div className="verdict-icon">⛔</div>
+                <div className="verdict-icon">🔎</div>
                 <div className="verdict-text">
                   <h3>Understanding the 2008 ASP — and Why FuturVille Goes Further</h3>
                   <p>
@@ -1437,7 +1438,7 @@ export default function App() {
 
               <div className="grid-2">
                 <div className="card card-red">
-                  <div style={{fontFamily:'DM Mono', fontSize:11, color:'#e74c3c', letterSpacing:2, textTransform:'uppercase', marginBottom:12}}>2008 ASP — Land Use</div>
+                  <div style={{fontFamily:'DM Mono', fontSize:11, color:'#8a9a82', letterSpacing:2, textTransform:'uppercase', marginBottom:12}}>2008 ASP — Land Use</div>
                   {[
                     ["Single Family Residential", "151 lots / 10.67 ha"],
                     ["Row/Townhouse", "±2.9 ha"],
@@ -1452,7 +1453,7 @@ export default function App() {
                       <span style={{color:'#8a7070', fontFamily:'DM Mono', fontSize:12}}>{val}</span>
                     </div>
                   ))}
-                  <div style={{marginTop:12, padding:'10px', background:'rgba(192,57,43,0.08)', borderRadius:6, fontSize:12, color:'#e74c3c'}}>
+                  <div style={{marginTop:12, padding:'10px', background:'rgba(100,100,90,0.12)', borderRadius:6, fontSize:12, color:'#8a9a82'}}>
                     ⚠ All types segregated. No blending. No productive commons. No LRLT.
                   </div>
                 </div>
@@ -1499,7 +1500,7 @@ export default function App() {
                   >
                     <div className="cap-icon">{cap.icon}</div>
                     <div className="cap-name">{cap.name}</div>
-                    <div className="cap-score" style={{color: '#e74c3c'}}>{cap.old}/100</div>
+                    <div className="cap-score" style={{color: '#8a9a82'}}>{cap.old}/100</div>
                     <div style={{fontSize:10, color:'#4a5a42', fontFamily:'DM Mono'}}>ASP 2008</div>
                     <div className="cap-score" style={{color: '#7aad6e', marginTop:8}}>{cap.new}/100</div>
                     <div style={{fontSize:10, color:'#4a8f3f', fontFamily:'DM Mono'}}>REGEN MODEL</div>
@@ -1517,7 +1518,7 @@ export default function App() {
                     <div style={{display:'flex', gap:20, marginBottom:12}}>
                       <div>
                         <span style={{fontSize:11, color:'#7a8a72', fontFamily:'DM Mono'}}>ASP 2008: </span>
-                        <span style={{fontSize:16, fontWeight:700, color:'#e74c3c', fontFamily:'DM Mono'}}>{CAPITALS[activeCap].old}/100</span>
+                        <span style={{fontSize:16, fontWeight:700, color:'#8a9a82', fontFamily:'DM Mono'}}>{CAPITALS[activeCap].old}/100</span>
                       </div>
                       <div>
                         <span style={{fontSize:11, color:'#7a8a72', fontFamily:'DM Mono'}}>REGEN MODEL: </span>
@@ -1584,7 +1585,7 @@ export default function App() {
                   </div>
                   <div style={{display:'flex', gap:24}}>
                     <div style={{textAlign:'center'}}>
-                      <div style={{fontFamily:'Playfair Display, serif', fontSize:28, fontWeight:700, color:'#e74c3c'}}>
+                      <div style={{fontFamily:'Playfair Display, serif', fontSize:28, fontWeight:700, color:'#8a9a82'}}>
                         {Math.round(CAPITALS.reduce((a,c)=>a+c.old,0)/5)}/100
                       </div>
                       <div style={{fontSize:11, color:'#7a8a72', fontFamily:'DM Mono'}}>2008 ASP</div>
