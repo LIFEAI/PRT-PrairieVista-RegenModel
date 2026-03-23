@@ -1,5 +1,4 @@
-import React, { useState } from "react";
-
+import { useState } from "react";
 
 const palette = {
   bg: "#0f1a0e",
@@ -664,10 +663,10 @@ const CLUSTERS = [
 const PHASES = [
   {
     phase: "Phase 0", title: "ASP + DA + RFP — Planning Foundation",
-    years: "March–April 2026",
+    years: "April–May 2026",
     color: "#c8952a",
-    body: "The planning foundation for all development. Revised ASP submitted to ORRSC and Town of Vulcan (March 25, 2026). Development Agreement mark-up and regenerative provisions negotiated with Town of Vulcan. Master Developer RFP drafted and issued. LandScope terrain intelligence and conceptual site plan completed. Oliizoi engagement lead; RDC capital architecture overlay.",
-    delivers: ["Revised ASP — March 25", "Development Agreement", "Master Developer RFP", "LandScope Package", "Conceptual Site Plan", "LRLT Formation"],
+    body: "The planning foundation for all development. Revised ASP submitted to ORRSC and Town of Vulcan (April 8, 2026). Development Agreement mark-up and regenerative provisions negotiated with Town of Vulcan. Master Developer RFP drafted and issued. LandScope terrain intelligence and conceptual site plan completed. Oliizoi engagement lead; RDC capital architecture overlay.",
+    delivers: ["Revised ASP — April 8", "Development Agreement", "Master Developer RFP", "LandScope Package", "Conceptual Site Plan", "LRLT Formation"],
     deliverColors: ["#c8952a", "#7aad6e", "#6b9dd4", "#d4b483", "#8a9080", "#9b59b6"]
   },
   {
@@ -743,6 +742,143 @@ const ZONE_LABELS = {
   road: "Streets / Infrastructure",
 };
 
+
+// ── PRT 4-Phase Regenerative Real Estate Development Diagram ─────────────────
+function PhaseDiagram() {
+  const [activePhase, setActivePhase] = React.useState(0);
+
+  const phases = [
+    {
+      num: "01",
+      name: "Align, Acquire & Discover",
+      icon: "🌱",
+      color: "#c8952a",
+      tagline: "Know the Place Before You Touch It",
+      steps: [
+        "Form relationships with landowner, community, and municipality",
+        "Commission Story of Place methodology — ecological, cultural, historical deep-dive",
+        "Register the Local Regenerative Land Trust (LRLT)",
+        "Establish RCCS ecological and social baselines",
+        "Align vision, capital architecture, and governance framework",
+      ],
+      outcome: "Story of Place document · LRLT registered · RCCS baselines established · PRT Lane A structure confirmed"
+    },
+    {
+      num: "02",
+      name: "Designated Land Use Plan",
+      icon: "🗺️",
+      color: "#7aad6e",
+      tagline: "Design with the Land, Not Against It",
+      steps: [
+        "Terrain intelligence and ecological mapping (LandScope)",
+        "Regenerative site design — blended clusters, productive commons, Village Heart",
+        "Area Structure Plan amendment — regulatory-grade, Council-ready",
+        "Development Agreement with regenerative covenant provisions",
+        "Master Developer RFP — attraction and screening of aligned builders",
+      ],
+      outcome: "Revised ASP approved · DA executed · RFP issued · Site plan complete"
+    },
+    {
+      num: "03",
+      name: "Activation & Build",
+      icon: "🏗️",
+      color: "#6b9dd4",
+      tagline: "Build What Was Designed — No Shortcuts",
+      steps: [
+        "Phase-gated infrastructure: water, sewer, energy microgrid",
+        "Village Heart shell constructed first — economic anchor from day one",
+        "Blended residential clusters built in sequence",
+        "RCCS credit issuance begins as ecological improvements verified",
+        "Community programs, food hub, and FuturVille accelerator launched",
+      ],
+      outcome: "Phase 1 units delivered · Village Heart operational · RCCS credits issuing · Community economy alive"
+    },
+    {
+      num: "04",
+      name: "Measure, Return & Restart",
+      icon: "♻️",
+      color: "#9fd48f",
+      tagline: "Stewardship Is the Economy",
+      steps: [
+        "Five Capitals measured and verified against RCCS baselines",
+        "LRLT stewardship income from credit sales reinvested in commons",
+        "PRT Lane A/B/C fully integrated — investors receive covenantal returns",
+        "FuturVille replication model activated — Vulcan becomes Village #1",
+        "Process and learnings exported to next community in the portfolio",
+      ],
+      outcome: "Full RCCS suite issuing · LRLT self-sustaining · Alberta proof case published · FuturVille model scales"
+    },
+  ];
+
+  const p = phases[activePhase];
+
+  return (
+    <div style={{background:'#1c2a1a', borderRadius:12, overflow:'hidden', border:'1px solid #2d4028'}}>
+      {/* Phase selector */}
+      <div style={{display:'grid', gridTemplateColumns:'repeat(4,1fr)', borderBottom:'1px solid #2d4028'}}>
+        {phases.map((ph, i) => (
+          <button key={i}
+            onClick={() => setActivePhase(i)}
+            style={{
+              background: activePhase === i ? `${ph.color}18` : 'transparent',
+              border: 'none',
+              borderBottom: activePhase === i ? `3px solid ${ph.color}` : '3px solid transparent',
+              padding:'16px 8px',
+              cursor:'pointer',
+              transition:'all 0.2s',
+            }}
+          >
+            <div style={{fontSize:20, marginBottom:4}}>{ph.icon}</div>
+            <div style={{fontFamily:"'DM Mono',monospace", fontSize:10, color: activePhase === i ? ph.color : '#7a8a72', letterSpacing:2}}>PHASE {ph.num}</div>
+            <div style={{fontSize:11, color: activePhase === i ? '#f0ede6' : '#7a8a72', lineHeight:1.3, marginTop:2}}>{ph.name}</div>
+          </button>
+        ))}
+      </div>
+
+      {/* Phase detail */}
+      <div style={{padding:24}}>
+        <div style={{display:'flex', alignItems:'center', gap:12, marginBottom:16}}>
+          <span style={{fontSize:28}}>{p.icon}</span>
+          <div>
+            <div style={{fontFamily:"'DM Mono',monospace", fontSize:11, color:p.color, letterSpacing:2, textTransform:'uppercase'}}>Phase {p.num} — {p.name}</div>
+            <div style={{fontSize:16, fontWeight:700, color:'#f0ede6', fontStyle:'italic'}}>{p.tagline}</div>
+          </div>
+        </div>
+
+        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:20}}>
+          <div>
+            <div style={{fontSize:11, color:'#7a8a72', letterSpacing:2, textTransform:'uppercase', marginBottom:12, fontFamily:"'DM Mono',monospace"}}>Key Activities</div>
+            {p.steps.map((step, i) => (
+              <div key={i} style={{display:'flex', gap:10, marginBottom:8, alignItems:'flex-start'}}>
+                <div style={{width:6, height:6, borderRadius:'50%', background:p.color, flexShrink:0, marginTop:5}}/>
+                <div style={{fontSize:13, color:'#d4b483', lineHeight:1.5}}>{step}</div>
+              </div>
+            ))}
+          </div>
+          <div style={{background:'#162114', borderRadius:8, padding:16, display:'flex', flexDirection:'column', justifyContent:'center'}}>
+            <div style={{fontSize:11, color:'#7a8a72', letterSpacing:2, textTransform:'uppercase', marginBottom:12, fontFamily:"'DM Mono',monospace"}}>Phase Outcome</div>
+            <div style={{fontSize:13, color:'#9fd48f', lineHeight:1.7}}>{p.outcome.split('·').map((item, i) => (
+              <div key={i} style={{marginBottom:6}}>✓ {item.trim()}</div>
+            ))}</div>
+          </div>
+        </div>
+
+        {/* Phase progress bar */}
+        <div style={{marginTop:20, display:'flex', gap:4}}>
+          {phases.map((ph, i) => (
+            <div key={i} style={{
+              flex:1, height:3, borderRadius:2,
+              background: i <= activePhase ? ph.color : '#2d4028',
+              transition:'background 0.3s',
+              cursor:'pointer',
+            }} onClick={() => setActivePhase(i)} />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 export default function App() {
   const [tab, setTab] = useState("diagnosis");
   const [openFail, setOpenFail] = useState(null);
@@ -778,7 +914,7 @@ export default function App() {
             From Extractive Subdivision to Regenerative Blended Community
           </div>
           <p className="hero-sub" style={{marginTop:16}}>
-            Official Town of Vulcan Development Update (Feb 2026): FuturVille is actively seeking investors and developing a new ASP focused on wellness-oriented design, sustainable living, and adaptable housing. This app provides the full regenerative redesign intelligence — diagnosis, capital model, phasing, and next steps.
+            FuturVille is creating Vulcan's first Health and Longevity Village — a regenerative community designed around wellness, ecological stewardship, and long-term community wealth. Explore the vision, the plan, and the path to making it real.
           </p>
           <div className="hero-meta">
             <span className="meta-pill">63 acres · Vulcan, AB</span>
@@ -883,11 +1019,11 @@ export default function App() {
             <div className="section-title">Confirmed Delivery Timeline</div>
             <div style={{display:"grid", gridTemplateColumns:"repeat(auto-fit,minmax(200px,1fr))", gap:12}}>
               {[
-                { date:"March 25, 2026", item:"Revised ASP (a)", color:"#c8952a", status:"Contracted" },
-                { date:"March 25, 2026", item:"Development Agreement (b)", color:"#c8952a", status:"Contracted" },
-                { date:"April 15, 2026", item:"Master Developer RFP (c)", color:"#7aad6e", status:"Contracted" },
-                { date:"April 15, 2026", item:"LandScope Package (d)", color:"#6b9dd4", status:"Contracted" },
-                { date:"April 15, 2026", item:"Conceptual Site Plan (e)", color:"#9fd48f", status:"Contracted" },
+                { date:"April 8, 2026", item:"Revised ASP (a)", color:"#c8952a", status:"Contracted" },
+                { date:"April 8, 2026", item:"Development Agreement (b)", color:"#c8952a", status:"Contracted" },
+                { date:"April 29, 2026", item:"Master Developer RFP (c)", color:"#7aad6e", status:"Contracted" },
+                { date:"April 29, 2026", item:"LandScope Package (d)", color:"#6b9dd4", status:"Contracted" },
+                { date:"April 29, 2026", item:"Conceptual Site Plan (e)", color:"#9fd48f", status:"Contracted" },
                 { date:"As needed", item:"Legal Review — 20 hrs (f)", color:"#d4b483", status:"Allocated" },
                 { date:"Ongoing", item:"Project Management (g) — Eric Amyot", color:"#8a9080", status:"Active" },
               ].map((d,i) => (
@@ -907,9 +1043,9 @@ export default function App() {
               <div className="verdict-banner">
                 <div className="verdict-icon">⛔</div>
                 <div className="verdict-text">
-                  <h3>The 2008 ASP Is a Blueprint for Extraction Dressed as Planning</h3>
+                  <h3>Understanding the 2008 ASP — and Why FuturVille Goes Further</h3>
                   <p>
-                    Not a single design decision in this document serves community wealth, ecological health, or long-term stewardship. It is a lot-sales machine — built to subdivide, sell, and exit. After 17 years of dormancy, this is our signal to replace it entirely. The DC rezoning in 2018 was the municipality giving us permission. Let's use it.
+                    The original 2008 Area Structure Plan was designed for a different era — conventional subdivision, standard lot yields, typical suburban phasing. Seventeen years later, Angela Faye has a better idea: a blended, productive, governed community that generates lasting value for Vulcan. The 2018 DC rezoning opened the door. FuturVille walks through it.
                   </p>
                 </div>
               </div>
@@ -917,7 +1053,7 @@ export default function App() {
               <div className="section-label">DIAGNOSTIC REPORT</div>
               <div className="section-title">Eight Fatal Design Flaws</div>
               <p className="section-intro">
-                Every one of these failures is a design choice, not an accident. The 2008 ASP was built to maximize lot yield and minimize developer risk — not to create a thriving community. Here's what's broken and why it matters.
+                Here's what the original plan assumed, and what FuturVille's regenerative redesign does differently. Each gap is an opportunity.
               </p>
 
               {FAILURES.map((f, i) => (
@@ -1085,7 +1221,7 @@ export default function App() {
               <div className="section-label">REGENERATIVE REDESIGN</div>
               <div className="section-title">FuturVille — A Blended Living Community</div>
               <p className="section-intro">
-                The new model replaces segregated lot types with blended neighborhood clusters, dead parks with productive commons, and a one-time extraction model with a perpetual stewardship economy. Every cluster contains all housing types. Every commons generates RCCS value. The Village Heart creates a local economy that keeps money circulating in Vulcan.
+                The regenerative model builds on what Vulcan already has — community spirit, open land, and proximity to the golf course and countryside — and adds what was always missing: blended neighborhoods, productive commons, and a Village Heart that generates real local economic activity. Every cluster contains all housing types. Every commons generates RCCS value.
               </p>
 
               <div className="stat-grid">
@@ -1587,7 +1723,7 @@ export default function App() {
                 {
                   num:"02", title:"Commission Story of Place Engagement",
                   urgent: true,
-                  body:"Engage Bill Reed / Regenesis Group to run the Story of Place process with Vulcan's community. This is not a delay — it is the foundation that makes everything that follows legitimate, durable, and community-supported. It is also what differentiates this from every other developer who has walked into the Town of Vulcan. Budget 3-4 months."
+                  body:"Dave Ladouceur (RDC) will lead the Story of Place engagement in coordination with the Regenesis Group, bringing Vulcan's community into the discovery process. This is the foundation that makes everything that follows legitimate, durable, and community-supported — and what makes FuturVille different from every conventional developer. Budget 3-4 months."
                 },
                 {
                   num:"03", title:"Register the FuturVille Regenerative Land Trust (LRLT)",
@@ -1650,7 +1786,7 @@ export default function App() {
                     ["Kattie Schlamp", "ORRSC Planner for Vulcan", "403-329-1344"],
                     ["Rita Hovde", "Development Officer, Town of Vulcan", "rhovde@townofvulcan.ca"],
                     ["Eric Amyot", "CEO, Oliizoi Inc.", "hello@oliizoi.com"],
-                    ["Bill Reed", "Regenesis Group (Story of Place)", "bill@regenesisgroup.com"],
+                    ["Dave Ladouceur", "Managing Director, RDC", "dave@prtrust.fund"],
                   ].map(([name, role, contact]) => (
                     <div key={name} style={{padding:'8px 0', borderBottom:'1px solid rgba(200,149,42,0.1)'}}>
                       <div style={{fontSize:13, fontWeight:600, color:'#f0ede6'}}>{name}</div>
