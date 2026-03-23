@@ -746,8 +746,8 @@ const ZONE_LABELS = {
 
 // ── Vulcan Aerial Photo Component ────────────────────────────────────────────
 function VulcanPhoto() {
-  const [loaded, setLoaded] = React.useState(false);
-  const [errored, setErrored] = React.useState(false);
+  const [loaded, setLoaded] = useState(false);
+  const [errored, setErrored] = useState(false);
   const R2_URL = "https://pub-ff9788cd4f1f494db0491a197025a94c.r2.dev/futurville/vulcan_aerial.jpg";
 
   return (
@@ -784,7 +784,7 @@ function VulcanPhoto() {
 
 // ── PRT 4-Phase Regenerative Real Estate Development Diagram ─────────────────
 function PhaseDiagram() {
-  const [activePhase, setActivePhase] = React.useState(0);
+  const [activePhase, setActivePhase] = useState(0);
 
   const phases = [
     {
