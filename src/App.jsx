@@ -1830,6 +1830,7 @@ export default function App() {
                 <div className="card card-gold">
                   <div style={{fontFamily:'DM Mono', fontSize:11, color:'#c8952a', letterSpacing:2, textTransform:'uppercase', marginBottom:12}}>Key Contacts</div>
                   {[
+                    ["Angela Faye Barnard", "Founder, FuturVille · Landowner", "angela@futurville.com"],
                     ["Kattie Schlamp", "ORRSC Planner for Vulcan", "403-329-1344"],
                     ["Rita Hovde", "Development Officer, Town of Vulcan", "rhovde@townofvulcan.ca"],
                     ["Eric Amyot", "CEO, Oliizoi Inc.", "hello@oliizoi.com"],
@@ -1863,15 +1864,6 @@ export default function App() {
                       <span style={{color: done ? '#b0d4a0' : '#7a8a72'}}>{item}</span>
                     </div>
                   ))}
-                </div>
-              </div>
-
-              <div className="cta-bar">
-                <div>
-                  <div className="cta-title">This is the moment, Angela.</div>
-                  <div className="cta-sub">
-                    Vulcan's dominant developer is exiting. The land has been dormant for 17 years. The DC zone is open. The PRT architecture is ready. The only thing left is to begin — with a Story of Place, an LRLT, and the conviction that this prairie patch can become a proof case for the whole regenerative development canon.
-                  </div>
                 </div>
               </div>
 
